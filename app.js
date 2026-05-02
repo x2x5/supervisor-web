@@ -34,6 +34,190 @@ const META_TEMPLATE_TEXT = `# Role
 const META_INPUT_PLACEHOLDER =
   "[在这里填写你的具体需求，例如：我想把一篇论文的 Introduction 喂给 AI，让它帮我写出一篇不超过300字的 Abstract，要有逻辑感，符合计算机顶会的风格。]";
 
+const PLACEHOLDER_HINTS = {
+  "想法评估": "我有个 idea：用 XX 方法解决 YY 问题，想在投入几个月前知道值不值得做……",
+  "论文框架": "我的核心思路是 XX，现有方法在 YY 方面不足，帮我把论文逻辑骨架搭出来……",
+  "Introduction 写作": "论文骨架已定，帮我起草 Introduction，Background 是 XX 领域，现有局限是……",
+  "图表设计": "Intro 大纲锁定了，帮我把第一段的 Running Example 翻成一张 Motivated Example 图……",
+  "投稿审查": "投稿截止前 3 天，帮我从审稿人视角做一轮完整 pass，重点看逻辑链和图表质量……",
+  "Benchmark 论文": "我想构建一个评估 XX 能力的 Benchmark，现有评测在 YY 维度是盲区……",
+  "AI 协作": "第一次用 Cursor/Claude 辅助写实验代码，帮我确认分工边界和行为守则……",
+  "未分类": "把论文 Introduction 压缩成顶会风格 Abstract，300 字以内……",
+};
+
+/* ── i18n ── */
+
+const TITLE_ZH = {
+  // Main skills
+  "Idea Evaluator": "想法评估器",
+  "Tech Paper Template": "技术论文模板",
+  "Benchmark Paper Template": "Benchmark 论文模板",
+  "Introduction Drafter": "引言起草器",
+  "Figure Designer": "图表设计师",
+  "Pre-Submission Reviewer": "投稿前审稿器",
+  "Vibe Research Workflow": "Vibe 研究工作流",
+  // Benchmark subs
+  "Overview": "概述",
+  "Core capabilities": "核心能力",
+  "Benchmark paper vs technical paper": "Benchmark vs 技术论文对比",
+  "The five pillars": "五支柱框架",
+  "Introduction six-part flowchart": "引言六段流程图",
+  "Section skeleton": "章节骨架",
+  "Prompt template": "提示词模板",
+  "Step 1: Five-pillar completeness table": "五支柱完整性核查",
+  "Step 2: Introduction six-part logic chain": "引言六段逻辑链",
+  "Step 3: Section outline for §2 to §7": "§2-§7 章节大纲",
+  "Step 4: Pre-submission self-check": "投稿前自查清单",
+  "Reference exemplars": "参考范例",
+  "Usage tips": "使用建议",
+  "References": "参考资料",
+  // Figure Designer subs
+  "When to use this skill": "何时使用",
+  "When NOT to use this skill": "何时不用",
+  "Core procedure": "核心流程",
+  "Step 1: Figure-type identification": "图表类型识别",
+  "Step 2: Paradigm recommendation": "设计范式推荐",
+  "Step 3: Layout sketch": "布局草图",
+  "Step 4: Labelling and annotation guidance": "标注与注释指南",
+  "Step 5: Tool suggestion": "工具建议",
+  "Step 6: Universal rule audit": "通用规则审查",
+  "Step 7: Integrity gate": "完整性校验",
+  "Step 8: Output": "输出",
+  "Integrity gate": "完整性校验",
+  "Output format": "输出格式",
+  // Idea Evaluator subs
+  "Step 1: First impression and paper-type positioning": "第一印象与论文定位",
+  "Step 2: Fatal-flaws audit (early gate)": "致命缺陷审查",
+  "Step 3: Lifecycle and capability matching": "生命周期与能力匹配",
+  "Step 4: Five-dimension scoring": "五维度评分",
+  "Step 5: Paradigm-shift probe": "范式跃迁探测",
+  "Step 6: Feasibility check": "可行性检查",
+  "Step 8: Final verdict": "最终裁决",
+  // Intro Drafter subs
+  "Step 1: Paper-type positioning": "论文类型定位",
+  "Step 2: Fill the thinking template": "填写思考模板",
+  "Step 3: Run four self-consistency checks": "四项自洽性检查",
+  "Step 4: Generate methodology outline": "生成方法大纲",
+  "Step 5: Integrity gate": "完整性校验",
+  "Step 6: Output": "输出",
+  "Step 1: Paragraph-by-paragraph outline": "逐段大纲",
+  "Step 3: Running example design": "贯穿示例设计",
+  "Step 4: Contribution alignment check": "贡献对齐检查",
+  "Step 5: Flowchart consistency check": "流程图一致性检查",
+  "Step 7: Output the outline": "输出大纲",
+  // Pre-Submission Reviewer subs
+  "Severity taxonomy": "严重程度分级",
+  "Step 1: Dimension 1 Macro logic review": "宏观逻辑审查",
+  "Step 2: Dimension 2 Writing details review": "写作细节审查",
+  "Step 3: Dimension 3 English grammar review": "英语语法审查",
+  "Step 4: Dimension 4 LaTeX format review": "LaTeX 格式审查",
+  "Step 5: Dimension 5 Figure quality review": "图表质量审查",
+  "Step 6: Banned-vocabulary and em-dash scan": "禁用词汇与格式扫描",
+  "Step 7: Section-by-section review": "逐节审查",
+  "Step 8: Integrity gate": "完整性校验",
+  "Step 9: Output": "输出",
+  // Vibe Research Workflow subs
+  "Step 1: Phase classification": "阶段分类",
+  "Step 2: Behavioural rules recap": "行为规则回顾",
+  "Step 3: Phase-specific procedure": "各阶段流程",
+  "Step 4: Tool selection": "工具选择",
+  "Step 5: Integrity gate": "完整性校验",
+  "Step 6: Output": "输出",
+};
+
+const CATEGORY_EN = {
+  "想法评估": "Idea Evaluation",
+  "论文框架": "Paper Framework",
+  "Introduction 写作": "Introduction Writing",
+  "图表设计": "Figure Design",
+  "投稿审查": "Pre-submission Review",
+  "Benchmark 论文": "Benchmark Paper",
+  "AI 协作": "AI Collaboration",
+  "未分类": "Uncategorized",
+};
+
+const UI_TEXT = {
+  zh: {
+    heroTitle: "骆昱宇博导技能",
+    addCard: "+ 新增卡片",
+    resetUsage: "次数清零",
+    trashLabel: "垃圾卡片",
+    clearTrash: "清空垃圾",
+    copyAll: "复制全部",
+    moveTo: "移至…",
+    restore: "恢复",
+    viewTemplate: "查看模板",
+    usageCount: (n) => `使用 ${n} 次`,
+    emptyTrash: "目前没有垃圾",
+    addModalTitle: "新增卡片",
+    need: "需求",
+    needPlaceholder: "例如：把论文 Introduction 压缩成顶会风格 Abstract，300字内。",
+    skills: "Skills",
+    skillsPlaceholder: "粘贴 AI 返回内容：第一行写标题，后续写完整 skills 模板。",
+    copyMeta: "复制元模板 + 需求",
+    createCard: "创建卡片",
+    cancel: "取消",
+    metaCopied: "已复制元模板 + 需求",
+    metaCopyFail: "复制失败，请手动复制",
+    metaNeedFirst: "请先填写需求",
+    pasteFull: "请粘贴完整内容：第一行标题，后续为 skills 模板",
+    copied: "已复制到剪贴板",
+    copyFail: "复制失败，请手动复制",
+    titleEmpty: "标题不能为空",
+    steps: (n) => `${n} 个步骤`,
+    footer: "参考项目：",
+  },
+  en: {
+    heroTitle: "LYY Supervisor Skills",
+    addCard: "+ New Card",
+    resetUsage: "Reset Count",
+    trashLabel: "Trash",
+    clearTrash: "Clear Trash",
+    copyAll: "Copy All",
+    moveTo: "Move to…",
+    restore: "Restore",
+    viewTemplate: "View Template",
+    usageCount: (n) => `Used ${n} times`,
+    emptyTrash: "Trash is empty",
+    addModalTitle: "New Card",
+    need: "Need",
+    needPlaceholder: "e.g., Compress paper Introduction into a top-venue Abstract, within 300 words.",
+    skills: "Skills",
+    skillsPlaceholder: "Paste AI output: first line is the title, then the full skills template.",
+    copyMeta: "Copy Meta-Template + Need",
+    createCard: "Create Card",
+    cancel: "Cancel",
+    metaCopied: "Meta-template + need copied",
+    metaCopyFail: "Copy failed, please copy manually",
+    metaNeedFirst: "Please fill in the need first",
+    pasteFull: "Please paste complete content: title on first line, then skills template.",
+    copied: "Copied to clipboard",
+    copyFail: "Copy failed, please copy manually",
+    titleEmpty: "Title cannot be empty",
+    steps: (n) => `${n} steps`,
+    footer: "Reference:",
+  },
+};
+
+let lang = (() => { try { return localStorage.getItem("supervisor-lang") || "zh"; } catch (e) { return "zh"; } })();
+
+function t(key, ...args) {
+  const map = UI_TEXT[lang] || UI_TEXT.zh;
+  const val = map[key];
+  if (typeof val === "function") return val(...args);
+  return val || key;
+}
+
+function translateTitle(title) {
+  if (lang === "zh" && TITLE_ZH[title]) return TITLE_ZH[title];
+  return title;
+}
+
+function translateCategory(cat) {
+  if (lang === "en" && CATEGORY_EN[cat]) return CATEGORY_EN[cat];
+  return cat;
+}
+
 /* ── DOM refs ── */
 const phasesRoot = document.getElementById("phasesRoot");
 const trashRoot = document.getElementById("trashRoot");
@@ -56,6 +240,7 @@ const noticeText = document.getElementById("noticeText");
 const manualFile = document.getElementById("manualFile");
 const manualLoadBtn = document.querySelector(".manual-load-btn");
 const trashPanel = document.getElementById("trashPanel");
+const langToggleBtn = document.getElementById("langToggleBtn");
 
 let baseItems = [];
 let allItems = [];
@@ -66,6 +251,51 @@ let state = createDefaultState();
 
 init();
 bindAddCardPanel();
+
+if (langToggleBtn) {
+  langToggleBtn.textContent = lang === "zh" ? "EN" : "中文";
+  langToggleBtn.addEventListener("click", () => {
+    lang = lang === "zh" ? "en" : "zh";
+    try { localStorage.setItem("supervisor-lang", lang); } catch (e) {}
+    langToggleBtn.textContent = lang === "zh" ? "EN" : "中文";
+    updateUIText();
+    render({ suppressAnimation: true });
+  });
+}
+
+function updateUIText() {
+  document.title = t("heroTitle");
+  const h1 = document.querySelector("h1");
+  if (h1) h1.textContent = t("heroTitle");
+  if (openAddBtn) openAddBtn.textContent = t("addCard");
+  if (resetUsageBtn) resetUsageBtn.textContent = t("resetUsage");
+  // Trash
+  const trashSummary = document.querySelector("#trashPanel > summary span");
+  if (trashSummary) trashSummary.textContent = t("trashLabel");
+  if (clearTrashBtn) clearTrashBtn.textContent = t("clearTrash");
+  // Modal
+  const modalTitle = document.getElementById("addModalTitle");
+  if (modalTitle) modalTitle.textContent = t("addModalTitle");
+  if (metaNeedInput) metaNeedInput.placeholder = t("needPlaceholder");
+  if (addPromptInput) addPromptInput.placeholder = t("skillsPlaceholder");
+  if (copyMetaBtn) copyMetaBtn.textContent = t("copyMeta");
+  if (createCardBtn) createCardBtn.textContent = t("createCard");
+  if (cancelAddBtn) cancelAddBtn.textContent = t("cancel");
+  // Footer
+  const footerSpan = document.querySelector(".page-footer span");
+  if (footerSpan) footerSpan.textContent = t("footer");
+  // Need label
+  const needLabel = document.querySelector(".modal-panel label");
+  if (needLabel) {
+    const labelText = needLabel.childNodes[0];
+    if (labelText) labelText.textContent = t("need");
+  }
+  const skillsLabel = document.querySelectorAll(".modal-panel label")[1];
+  if (skillsLabel) {
+    const labelText = skillsLabel.childNodes[0];
+    if (labelText) labelText.textContent = t("skills");
+  }
+}
 
 async function init() {
   const markdown = await tryReadDataSource();
@@ -403,6 +633,8 @@ function createCard(item, zone, index) {
   const title = node.querySelector(".card-title");
   const subtitle = node.querySelector(".card-subtitle");
   const input = node.querySelector(".card-input");
+  const hint = PLACEHOLDER_HINTS[item.category] || PLACEHOLDER_HINTS[UNGROUPED];
+  if (hint) input.placeholder = hint;
   const copyBtn = node.querySelector(".copy-btn");
   const phaseBtn = node.querySelector(".phase-select-btn");
   const phaseMenu = node.querySelector(".phase-menu");
@@ -419,16 +651,21 @@ function createCard(item, zone, index) {
   const saveEditBtn = node.querySelector(".save-edit-btn");
   const cancelEditBtn = node.querySelector(".cancel-edit-btn");
 
-  title.textContent = item.title;
-  subtitle.textContent = item.category || UNGROUPED;
+  const numPrefix = zone !== "trash" ? `${index + 1}. ` : "";
+  title.textContent = numPrefix + translateTitle(item.title);
+  subtitle.textContent = translateCategory(item.category || UNGROUPED);
   preview.textContent = item.prompt;
   if (previewSummary) {
     const usage = document.createElement("span");
     usage.className = "usage-count";
-    usage.textContent = `使用 ${getUsageCount(item.id)} 次`;
+    usage.textContent = t("usageCount", getUsageCount(item.id));
     previewSummary.appendChild(usage);
+    previewSummary.childNodes[0].textContent = t("viewTemplate") + " ";
   }
   input.value = inputStore.get(item.id) || "";
+
+  // Buttons
+  copyBtn.textContent = t("copyAll");
 
   // Drag
   if (zone !== "trash") {
@@ -439,13 +676,13 @@ function createCard(item, zone, index) {
 
   // Phase move / restore button
   if (zone !== "trash") {
-    phaseBtn.textContent = "移至…";
+    phaseBtn.textContent = t("moveTo");
     phaseBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       togglePhaseMenu(node, item.id);
     });
   } else {
-    phaseBtn.textContent = "恢复";
+    phaseBtn.textContent = t("restore");
     phaseBtn.classList.add("secondary");
     phaseBtn.classList.remove("phase-select-btn");
     phaseBtn.addEventListener("click", () => {

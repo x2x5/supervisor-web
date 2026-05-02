@@ -448,7 +448,6 @@ body.no-enter-anim .card {
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  gap: 10px;
   cursor: pointer;
   font-weight: 700;
 }
@@ -526,7 +525,7 @@ body.no-enter-anim .card {
   margin-top: 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
 .clear-trash-btn {

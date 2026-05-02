@@ -7,42 +7,68 @@ const PART_ONE_HEADING = /^#\s+Part I:\s*写作 Prompt 集合\s*$/;
 const PART_TWO_HEADING = /^#\s+Part II:/;
 const UNGROUPED = "未分类";
 const META_TEMPLATE_TEXT = `# Role
-你是一位世界顶级的 AI 提示词工程师（Prompt Engineer）。你的任务是根据我的【核心需求】，为我量身定制一套高标准、结构化的提示词模板，以便我能够用它来指导其他 AI 完美执行任务。
+You are a world-class Prompt Engineer. Your task is to design a high-quality, structured prompt template based on my core need, so that I can use it to guide another AI to execute the task perfectly.
 
 # Task
-请分析我的需求，并严格按照下方的【目标模板结构】生成一份高质量的提示词。
+Analyze my need and generate a top-tier prompt template strictly following the Target Template Structure below.
 
-# Target Template Structure (目标模板结构)
-你输出的提示词必须包含以下四个部分，并且排版清晰：
-1. # Role (角色设定)：为执行该任务的 AI 赋予一个最匹配、最资深的专家身份（例如：资深学术翻译官、顶级期刊编辑、高级数据分析师等）。
-2. # Task (核心任务)：用一两句话清晰、无歧义地概括 AI 需要完成的动作。
-3. # Constraints (约束与规则)：这是最核心的部分。请根据我的需求，帮我穷举并细化 AI 在执行任务时必须遵守的规则。可以包括但不限于：
-   - 工作流（第一步做什么，第二步做什么）
-   - 质量标准（语气风格、专业度要求）
-   - 避坑指南（明确指出“不要做什么”，比如不要擅自增加信息、不要使用特定词汇等）
-   - 输出格式（JSON、Markdown、纯文本、表格等）
-4. # Input (输入区)：在末尾留出用括号包裹的占位符，例如 [在此处粘贴你的文本/数据/代码]，方便我后续填入真实内容。
+# Target Template Structure
+Your output must contain the following four sections, clearly formatted:
+1. # Role — Assign the most fitting, most senior expert identity for the AI performing this task (e.g., Senior Academic Translator, Top-Tier Journal Editor, Senior Data Analyst, etc.).
+2. # Task — In one or two sentences, clearly and unambiguously summarize what the AI needs to do.
+3. # Constraints — This is the core. Based on my need, exhaustively list and refine the rules the AI must follow. Include but not limited to:
+   - Workflow (step 1 do X, step 2 do Y)
+   - Quality standards (tone, style, professionalism)
+   - Pitfalls to avoid (explicit "do NOT do X", e.g. do not add unsupported information, avoid certain words, etc.)
+   - Output format (JSON, Markdown, plain text, table, etc.)
+4. # Input (输入示例) — Leave a placeholder wrapped in brackets at the end for the user to fill in real content. Provide the placeholder text in both English and Chinese, separated by a newline, so the card can display bilingual hints. Example format:
+   [Paste your text / data / code here]
+   [在此处粘贴你的文本 / 数据 / 代码]
 
-# Constraints for You (对你的约束)
-1. 专业度：生成的约束条件（Constraints）必须直击痛点。比如如果是学术写作任务，你要自动帮我加上“学术客观语气”、“避免使用过度口语化的副词”等专业规则。
-2. 零废话：只输出生成好的提示词模板本身，不要加任何诸如“好的，我为您生成”之类的寒暄废话。
-3. 语言：输出的提示词模板使用中文。
-4. 输出格式补充：最终输出的第一行必须是标题（仅标题，不加解释），且必须为中文短标题，严格控制在 4-5 个字；从第二行开始输出完整 skills 模板正文。
+# Constraints for You
+1. Depth: The constraints must hit the pain points directly. For example, for academic writing tasks, automatically add rules like "maintain academic objectivity" and "avoid overly colloquial adverbs".
+2. No fluff: Output only the generated prompt template itself. No greetings like "Here you go" or "I've generated this for you".
+3. Language: The prompt template body must be written in English.
+4. Output format: The very first line must be a bilingual title in the format "English Title | 中文标题" (pipe-separated, no extra explanation). The English title should be short, 4-5 words max. From the second line onward, output the full skills template body.
 
-# Input (我的核心需求)
-[在这里填写你的具体需求，例如：我想把一篇论文的 Introduction 喂给 AI，让它帮我写出一篇不超过300字的 Abstract，要有逻辑感，符合计算机顶会的风格。]`;
+# Input (My Core Need)
+[Describe your specific need here, e.g.: I want to feed a paper's Introduction to the AI and have it write an Abstract of no more than 300 words, with logical flow, in the style of a top CS conference.]`;
 const META_INPUT_PLACEHOLDER =
-  "[在这里填写你的具体需求，例如：我想把一篇论文的 Introduction 喂给 AI，让它帮我写出一篇不超过300字的 Abstract，要有逻辑感，符合计算机顶会的风格。]";
+  "[Describe your specific need here, e.g.: I want to feed a paper's Introduction to the AI and have it write an Abstract of no more than 300 words, with logical flow, in the style of a top CS conference.]";
 
 const PLACEHOLDER_HINTS = {
-  "想法评估": "我有个 idea：用 XX 方法解决 YY 问题，想在投入几个月前知道值不值得做……",
-  "论文框架": "我的核心思路是 XX，现有方法在 YY 方面不足，帮我把论文逻辑骨架搭出来……",
-  "Introduction 写作": "论文骨架已定，帮我起草 Introduction，Background 是 XX 领域，现有局限是……",
-  "图表设计": "Intro 大纲锁定了，帮我把第一段的 Running Example 翻成一张 Motivated Example 图……",
-  "投稿审查": "投稿截止前 3 天，帮我从审稿人视角做一轮完整 pass，重点看逻辑链和图表质量……",
-  "Benchmark 论文": "我想构建一个评估 XX 能力的 Benchmark，现有评测在 YY 维度是盲区……",
-  "AI 协作": "第一次用 Cursor/Claude 辅助写实验代码，帮我确认分工边界和行为守则……",
-  "未分类": "把论文 Introduction 压缩成顶会风格 Abstract，300 字以内……",
+  "想法评估": {
+    zh: "我有个 idea：用 XX 方法解决 YY 问题，想在投入几个月前知道值不值得做……",
+    en: "I have an idea: use method X to solve problem Y. I want to know if it's worth pursuing before investing months...",
+  },
+  "论文框架": {
+    zh: "我的核心思路是 XX，现有方法在 YY 方面不足，帮我把论文逻辑骨架搭出来……",
+    en: "My core idea is X. Existing methods fall short on Y. Help me build the paper's logical skeleton...",
+  },
+  "Introduction 写作": {
+    zh: "论文骨架已定，帮我起草 Introduction，Background 是 XX 领域，现有局限是……",
+    en: "The paper skeleton is locked. Help me draft the Introduction. Background is field X, existing limitations are...",
+  },
+  "图表设计": {
+    zh: "Intro 大纲锁定了，帮我把第一段的 Running Example 翻成一张 Motivated Example 图……",
+    en: "The Intro outline is set. Help me turn the running example from paragraph 1 into a Motivated Example figure...",
+  },
+  "投稿审查": {
+    zh: "投稿截止前 3 天，帮我从审稿人视角做一轮完整 pass，重点看逻辑链和图表质量……",
+    en: "3 days before the deadline. Help me do a full reviewer-pass, focusing on logic chain and figure quality...",
+  },
+  "Benchmark 论文": {
+    zh: "我想构建一个评估 XX 能力的 Benchmark，现有评测在 YY 维度是盲区……",
+    en: "I want to build a benchmark for evaluating X. Existing evaluations are blind to dimension Y...",
+  },
+  "AI 协作": {
+    zh: "第一次用 Cursor/Claude 辅助写实验代码，帮我确认分工边界和行为守则……",
+    en: "First time using Cursor/Claude for experiment code. Help me set the boundary and behavioral rules...",
+  },
+  "未分类": {
+    zh: "把论文 Introduction 压缩成顶会风格 Abstract，300 字以内……",
+    en: "Compress the paper Introduction into a top-venue Abstract, within 300 words...",
+  },
 };
 
 /* ── i18n ── */
@@ -208,9 +234,12 @@ function t(key, ...args) {
   return val || key;
 }
 
-function translateTitle(title) {
-  if (lang === "zh" && TITLE_ZH[title]) return TITLE_ZH[title];
-  return title;
+function translateTitle(item) {
+  if (lang === "zh") {
+    if (item.titleZh) return item.titleZh;
+    if (TITLE_ZH[item.title]) return TITLE_ZH[item.title];
+  }
+  return item.title;
 }
 
 function translateCategory(cat) {
@@ -249,7 +278,7 @@ let openPhaseMenu = null;
 const inputStore = new Map();
 let state = createDefaultState();
 
-init();
+init().then(() => { updateUIText(); });
 bindAddCardPanel();
 
 if (langToggleBtn) {
@@ -633,7 +662,8 @@ function createCard(item, zone, index) {
   const title = node.querySelector(".card-title");
   const subtitle = node.querySelector(".card-subtitle");
   const input = node.querySelector(".card-input");
-  const hint = PLACEHOLDER_HINTS[item.category] || PLACEHOLDER_HINTS[UNGROUPED];
+  const hintEntry = PLACEHOLDER_HINTS[item.category] || PLACEHOLDER_HINTS[UNGROUPED];
+  const hint = hintEntry ? (hintEntry[lang] || hintEntry.zh) : "";
   if (hint) input.placeholder = hint;
   const copyBtn = node.querySelector(".copy-btn");
   const phaseBtn = node.querySelector(".phase-select-btn");
@@ -652,7 +682,7 @@ function createCard(item, zone, index) {
   const cancelEditBtn = node.querySelector(".cancel-edit-btn");
 
   const numPrefix = zone !== "trash" ? `${index + 1}. ` : "";
-  title.textContent = numPrefix + translateTitle(item.title);
+  title.textContent = numPrefix + translateTitle(item);
   subtitle.textContent = translateCategory(item.category || UNGROUPED);
   preview.textContent = item.prompt;
   if (previewSummary) {
@@ -979,11 +1009,11 @@ function updateCardCategory(cardId, newCategory) {
 
 /* ── Card CRUD ── */
 
-function addNewCard(title, prompt) {
+function addNewCard(title, titleZh, prompt) {
   const id = buildCustomCardId();
-  state.customCards.push({ id, title, category: UNGROUPED, prompt });
-  if (!state.phaseOrder[phase]) state.phaseOrder[phase] = [];
-  state.phaseOrder[phase].push(id);
+  state.customCards.push({ id, title, titleZh: titleZh || title, category: UNGROUPED, prompt });
+  if (!state.phaseOrder[UNGROUPED]) state.phaseOrder[UNGROUPED] = [];
+  state.phaseOrder[UNGROUPED].push(id);
   commitState();
 }
 
@@ -1112,6 +1142,7 @@ function normalizeState(raw) {
       .map((card) => ({
         id: String(card.id || "").trim(),
         title: String(card.title || "").trim(),
+        titleZh: String(card.titleZh || card.title || "").trim(),
         category: String(card.category || "").trim() || UNGROUPED,
         prompt: String(card.prompt || "").trim(),
       }))
@@ -1207,7 +1238,7 @@ function materializeItems(base, currentState) {
     if (seen.has(item.id)) return;
     seen.add(item.id);
     output.push({
-      id: item.id, title: item.title,
+      id: item.id, title: item.title, titleZh: item.titleZh || item.title,
       category: item.category || UNGROUPED, prompt: item.prompt, source: "custom",
     });
   });
@@ -1259,7 +1290,7 @@ function bindAddCardPanel() {
       addStatusText.className = "add-status error";
       return;
     }
-    addNewCard(parsed.title, parsed.prompt);
+    addNewCard(parsed.title, parsed.titleZh, parsed.prompt);
     closeAddPanel();
   });
 }
@@ -1277,10 +1308,19 @@ function parseGeneratedSkill(rawText) {
   const lines = String(rawText || "").split(/\r?\n/).map((line) => line.trim());
   const nonEmpty = lines.filter(Boolean);
   if (nonEmpty.length < 2) return null;
-  let title = nonEmpty[0].replace(/^#+\s*/, "").replace(/^标题[:：]\s*/i, "").trim();
+  // Parse bilingual title: "English Title | 中文标题"
+  let rawTitle = nonEmpty[0].replace(/^#+\s*/, "").replace(/^标题[:：]\s*/i, "").trim();
+  let titleEn = rawTitle;
+  let titleZh = "";
+  const sepIdx = rawTitle.indexOf("|");
+  if (sepIdx > 0) {
+    titleEn = rawTitle.substring(0, sepIdx).trim();
+    titleZh = rawTitle.substring(sepIdx + 1).trim();
+  }
+  if (!titleZh) titleZh = titleEn;
   const prompt = nonEmpty.slice(1).join("\n").trim();
-  if (!title || !prompt) return null;
-  return { title, prompt };
+  if (!titleEn || !prompt) return null;
+  return { title: titleEn, titleZh, prompt };
 }
 
 document.addEventListener("keydown", (event) => {

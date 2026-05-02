@@ -33,3 +33,5 @@ evals/latest-report.md
 # Temp
 *.tmp
 *.log
+
+.claude

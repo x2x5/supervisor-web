@@ -1,16 +1,11 @@
 "use strict";
 
-const STORAGE_KEY = "prompt-card-layout-v2";
+const STORAGE_KEY = "prompt-card-layout-v3";
 const PRIMARY_DATA_SOURCE = "./skills.md";
 const FALLBACK_DATA_SOURCE = "./README.md";
 const PART_ONE_HEADING = /^#\s+Part I:\s*写作 Prompt 集合\s*$/;
 const PART_TWO_HEADING = /^#\s+Part II:/;
-const DEFAULT_COMMON_TITLES = [
-  "中转英",
-  "英转中",
-  "表达润色（英文论文）",
-  "实验分析",
-];
+const UNGROUPED = "未分类";
 const META_TEMPLATE_TEXT = `# Role
 你是一位世界顶级的 AI 提示词工程师（Prompt Engineer）。你的任务是根据我的【核心需求】，为我量身定制一套高标准、结构化的提示词模板，以便我能够用它来指导其他 AI 完美执行任务。
 
@@ -39,14 +34,12 @@ const META_TEMPLATE_TEXT = `# Role
 const META_INPUT_PLACEHOLDER =
   "[在这里填写你的具体需求，例如：我想把一篇论文的 Introduction 喂给 AI，让它帮我写出一篇不超过300字的 Abstract，要有逻辑感，符合计算机顶会的风格。]";
 
-const commonRoot = document.getElementById("commonRoot");
-const poolRoot = document.getElementById("poolRoot");
+/* ── DOM refs ── */
+const phasesRoot = document.getElementById("phasesRoot");
 const trashRoot = document.getElementById("trashRoot");
 const clearTrashBtn = document.getElementById("clearTrashBtn");
-const cardCount = document.getElementById("cardCount");
 const cardTemplate = document.getElementById("cardTemplate");
 const openAddBtn = document.getElementById("openAddBtn");
-const toggleUsageSortBtn = document.getElementById("toggleUsageSortBtn");
 const resetUsageBtn = document.getElementById("resetUsageBtn");
 const addModal = document.getElementById("addModal");
 const addModalMask = document.getElementById("addModalMask");
@@ -62,10 +55,12 @@ const notice = document.getElementById("notice");
 const noticeText = document.getElementById("noticeText");
 const manualFile = document.getElementById("manualFile");
 const manualLoadBtn = document.querySelector(".manual-load-btn");
+const trashPanel = document.getElementById("trashPanel");
 
 let baseItems = [];
 let allItems = [];
 let draggingId = null;
+let openPhaseMenu = null;
 const inputStore = new Map();
 let state = createDefaultState();
 
@@ -84,25 +79,19 @@ async function init() {
 async function tryReadDataSource() {
   try {
     const response = await fetch(PRIMARY_DATA_SOURCE, { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error("无法读取 skills.md");
-    }
+    if (!response.ok) throw new Error("无法读取 skills.md");
     const text = await response.text();
     hideNotice();
     return text;
   } catch (error) {
     try {
       const fallbackResponse = await fetch(FALLBACK_DATA_SOURCE, { cache: "no-store" });
-      if (!fallbackResponse.ok) {
-        throw new Error("无法读取 fallback README.md");
-      }
+      if (!fallbackResponse.ok) throw new Error("无法读取 fallback README.md");
       const fallbackText = await fallbackResponse.text();
       showNotice("当前未读取到 skills.md，已回退到 README.md。建议把数据迁移到 skills.md。");
       return fallbackText;
     } catch (fallbackError) {
-      showNotice(
-        "浏览器没有直接读取到 skills.md。你可以点击下面按钮手动选择本地 skills.md 文件。"
-      );
+      showNotice("浏览器没有直接读取到 skills.md。你可以点击下面按钮手动选择本地 skills.md 文件。");
       manualLoadBtn.classList.remove("hidden");
       return null;
     }
@@ -111,9 +100,7 @@ async function tryReadDataSource() {
 
 manualFile.addEventListener("change", async (event) => {
   const file = event.target.files && event.target.files[0];
-  if (!file) {
-    return;
-  }
+  if (!file) return;
   const text = await file.text();
   parseAndInit(text);
 });
@@ -132,32 +119,11 @@ if (resetUsageBtn) {
   });
 }
 
-if (toggleUsageSortBtn) {
-  toggleUsageSortBtn.addEventListener("click", () => {
-    applyUsageSort();
-  });
-}
-
-commonRoot.addEventListener("dragover", (event) => {
-  event.preventDefault();
-});
-
-commonRoot.addEventListener("drop", (event) => {
-  if (!draggingId) {
-    return;
-  }
-  const target = event.target instanceof Element ? event.target : null;
-  const cardNode = target ? target.closest(".card") : null;
-  if (cardNode && !cardNode.classList.contains("add-card")) {
-    return;
-  }
-  moveCommonToEnd(draggingId);
-});
+/* ── Parsing ── */
 
 function parseAndInit(markdown) {
   try {
     hideNotice();
-
     baseItems = parsePromptItems(markdown).map((item) => ({
       ...item,
       source: "base",
@@ -165,10 +131,14 @@ function parseAndInit(markdown) {
     state = normalizeState(loadState());
     refreshAllItems();
 
-    state.commonIds = normalizeCommonIds(state.commonIds, allItems);
-    if (state.commonIds.length === 0) {
-      state.commonIds = buildDefaultCommonIds(allItems);
+    // Build initial phase order from base items if not present
+    if (!state.phaseOrder || Object.keys(state.phaseOrder).length === 0) {
+      state.phaseOrder = buildInitialPhaseOrder(allItems);
     }
+    // Ensure all known phases have entries
+    state.phaseOrder = ensurePhaseOrder(state.phaseOrder, allItems);
+
+    state.commonIds = null; // no longer used
     saveState();
     render();
 
@@ -189,16 +159,10 @@ function parseAndInit(markdown) {
 function parsePromptItems(markdown) {
   const partOne = extractPartOne(markdown);
   const sections = splitSections(partOne);
-
   return sections
     .map((section) => {
       const prompt = extractFenceBlocks(section.content).join("\n\n").trim();
-      return {
-        id: section.id,
-        title: section.title,
-        category: section.category || "未分类",
-        prompt,
-      };
+      return { id: section.id, title: section.title, category: section.category || UNGROUPED, prompt };
     })
     .filter((item) => item.prompt.length > 0);
 }
@@ -207,26 +171,15 @@ function extractPartOne(markdown) {
   const lines = markdown.split(/\r?\n/);
   let inPartOne = false;
   const buffer = [];
-
   for (const line of lines) {
     if (!inPartOne) {
-      if (PART_ONE_HEADING.test(line)) {
-        inPartOne = true;
-        buffer.push(line);
-      }
+      if (PART_ONE_HEADING.test(line)) { inPartOne = true; buffer.push(line); }
       continue;
     }
-
-    if (PART_TWO_HEADING.test(line)) {
-      break;
-    }
+    if (PART_TWO_HEADING.test(line)) break;
     buffer.push(line);
   }
-
-  if (!inPartOne) {
-    throw new Error("skills.md 中未找到 Part I");
-  }
-
+  if (!inPartOne) throw new Error("skills.md 中未找到 Part I");
   return buffer.join("\n");
 }
 
@@ -234,7 +187,7 @@ function splitSections(partOneText) {
   const lines = partOneText.split(/\r?\n/);
   const sections = [];
   let current = null;
-  let currentCategory = "未分类";
+  let currentCategory = UNGROUPED;
   let inFence = false;
   let fenceMarker = "";
   const usedIds = new Set();
@@ -250,44 +203,27 @@ function splitSections(partOneText) {
         inFence = false;
         fenceMarker = "";
       }
-      if (current) {
-        current.content.push(line);
-      }
+      if (current) current.content.push(line);
       continue;
     }
 
     if (!inFence) {
       const categoryHeading = line.match(/^###\s+(.+?)\s*$/);
       if (categoryHeading) {
-        currentCategory = cleanTitle(categoryHeading[1]) || "未分类";
+        currentCategory = cleanTitle(categoryHeading[1]) || UNGROUPED;
         continue;
       }
-
       const heading = line.match(/^##\s+(.+?)\s*$/);
       if (heading) {
-        if (current) {
-          sections.push(current);
-        }
+        if (current) sections.push(current);
         const title = cleanTitle(heading[1]);
-        current = {
-          id: buildStableId(title, usedIds),
-          title,
-          category: currentCategory,
-          content: [],
-        };
+        current = { id: buildStableId(title, usedIds), title, category: currentCategory, content: [] };
         continue;
       }
     }
-
-    if (current) {
-      current.content.push(line);
-    }
+    if (current) current.content.push(line);
   }
-
-  if (current) {
-    sections.push(current);
-  }
-
+  if (current) sections.push(current);
   return sections;
 }
 
@@ -296,7 +232,6 @@ function extractFenceBlocks(lines) {
   let inFence = false;
   let fenceMarker = "";
   let buffer = [];
-
   for (const line of lines) {
     const fenceMatch = line.match(/^(`{3,})/);
     if (fenceMatch) {
@@ -308,70 +243,132 @@ function extractFenceBlocks(lines) {
       } else if (marker.length >= fenceMarker.length) {
         inFence = false;
         const block = buffer.join("\n").trim();
-        if (block) {
-          blocks.push(block);
-        }
+        if (block) blocks.push(block);
         fenceMarker = "";
         buffer = [];
       }
       continue;
     }
-
-    if (inFence) {
-      buffer.push(line);
-    }
+    if (inFence) buffer.push(line);
   }
-
   return blocks;
 }
 
 function cleanTitle(title) {
-  return title
-    .replace(/[💡🎯✨📖📑🤖📝🎉🔬🚀🤝]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  return title.replace(/[💡🎯✨📖📑🤖📝🎉🔬🚀🤝]/g, "").replace(/\s+/g, " ").trim();
 }
 
 function buildStableId(title, usedIds) {
-  const base =
-    title
-      .toLowerCase()
-      .replace(/[()（）]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9\u4e00-\u9fa5_-]/g, "") || "card";
-
-  if (!usedIds.has(base)) {
-    usedIds.add(base);
-    return base;
-  }
-
+  const base = title
+    .toLowerCase()
+    .replace(/[()（）]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9一-龥_-]/g, "") || "card";
+  if (!usedIds.has(base)) { usedIds.add(base); return base; }
   let index = 2;
-  while (usedIds.has(`${base}-${index}`)) {
-    index += 1;
-  }
+  while (usedIds.has(`${base}-${index}`)) index += 1;
   const id = `${base}-${index}`;
   usedIds.add(id);
   return id;
 }
 
+/* ── Phase order ── */
+
+function buildInitialPhaseOrder(items) {
+  const order = {};
+  const seenPhases = [];
+  for (const item of items) {
+    const phase = item.category || UNGROUPED;
+    if (!order[phase]) {
+      order[phase] = [];
+      seenPhases.push(phase);
+    }
+    order[phase].push(item.id);
+  }
+  return order;
+}
+
+function ensurePhaseOrder(existing, items) {
+  const order = { ...existing };
+  const seenIds = new Set();
+  // Collect all IDs currently tracked
+  for (const ids of Object.values(order)) {
+    for (const id of ids) ids && seenIds.add(id);
+  }
+  // Group items by phase
+  const byPhase = {};
+  for (const item of items) {
+    const phase = item.category || UNGROUPED;
+    if (!byPhase[phase]) byPhase[phase] = [];
+    byPhase[phase].push(item.id);
+  }
+  // Ensure each phase has an entry; add new cards at end
+  for (const [phase, ids] of Object.entries(byPhase)) {
+    if (!order[phase]) order[phase] = [];
+    for (const id of ids) {
+      if (!order[phase].includes(id)) order[phase].push(id);
+    }
+  }
+  // Clean up phases that no longer have any matching items
+  const allKnownIds = new Set(items.map((i) => i.id));
+  for (const phase of Object.keys(order)) {
+    order[phase] = order[phase].filter((id) => allKnownIds.has(id));
+  }
+  return order;
+}
+
+function getPhaseDisplayOrder(state, items) {
+  // Returns phase names in display order
+  const byCategory = new Map();
+  for (const item of items) {
+    const cat = item.category || UNGROUPED;
+    if (!byCategory.has(cat)) byCategory.set(cat, []);
+    byCategory.get(cat).push(item.id);
+  }
+  const phases = [...byCategory.keys()];
+  // Put UNGROUPED last
+  phases.sort((a, b) => {
+    if (a === UNGROUPED) return 1;
+    if (b === UNGROUPED) return -1;
+    return 0;
+  });
+  return phases;
+}
+
+/* ── Rendering ── */
+
 function render(options = {}) {
   const suppressAnimation = Boolean(options.suppressAnimation);
-  if (suppressAnimation) {
-    document.body.classList.add("no-enter-anim");
-  }
+  if (suppressAnimation) document.body.classList.add("no-enter-anim");
 
   const itemMap = new Map(allItems.map((item) => [item.id, item]));
-  const commonItems = state.commonIds.map((id) => itemMap.get(id)).filter(Boolean);
-  const poolItems = allItems.filter((item) => !state.commonIds.includes(item.id));
-  const trashItems = (state.trashedCustomCards || []).map((item) => ({ ...item, source: "trash" }));
+  const phases = getPhaseDisplayOrder(state, allItems);
 
-  renderList(commonRoot, commonItems, "common");
-  renderList(poolRoot, poolItems, "pool");
-  renderList(trashRoot, trashItems, "trash");
+  // Flatten all cards in phase order
+  const allOrderedIds = [];
+  phases.forEach((phaseName) => {
+    const orderedIds = state.phaseOrder[phaseName] || [];
+    const phaseItemIds = new Set(
+      allItems.filter((i) => (i.category || UNGROUPED) === phaseName).map((i) => i.id)
+    );
+    const ids = orderedIds.filter((id) => phaseItemIds.has(id));
+    for (const id of phaseItemIds) {
+      if (!ids.includes(id)) ids.push(id);
+    }
+    allOrderedIds.push(...ids);
+  });
+  const items = allOrderedIds.map((id) => itemMap.get(id)).filter(Boolean);
 
-  if (cardCount) {
-    cardCount.textContent = `总计 ${allItems.length} 张卡片，常用 ${commonItems.length}，卡片池 ${poolItems.length}`;
-  }
+  phasesRoot.innerHTML = "";
+  const fragment = document.createDocumentFragment();
+  items.forEach((item, index) => {
+    const card = createCard(item, item.category || UNGROUPED, index);
+    fragment.appendChild(card);
+  });
+  phasesRoot.appendChild(fragment);
+
+  renderTrash();
+
   if (suppressAnimation) {
     requestAnimationFrame(() => {
       document.body.classList.remove("no-enter-anim");
@@ -379,38 +376,22 @@ function render(options = {}) {
   }
 }
 
-function renderList(root, items, zone) {
-  root.innerHTML = "";
-  const fragment = document.createDocumentFragment();
-
-  if (zone === "common") {
-    items.forEach((item, index) => {
-      const card = createCard(item, zone, index);
-      fragment.appendChild(card);
-    });
-    root.appendChild(fragment);
-    return;
-  }
-
-  if (items.length === 0) {
+function renderTrash() {
+  const trashItems = (state.trashedCustomCards || []).map((item) => ({ ...item, source: "trash" }));
+  trashRoot.innerHTML = "";
+  if (trashItems.length === 0) {
     const empty = document.createElement("p");
     empty.className = "empty-tip";
-    if (zone === "pool") {
-      empty.textContent = "替补卡片暂无卡片";
-    } else if (zone === "trash") {
-      empty.textContent = "目前没有垃圾";
-    } else {
-      empty.textContent = "暂无卡片";
-    }
-    root.appendChild(empty);
+    empty.textContent = "目前没有垃圾";
+    trashRoot.appendChild(empty);
     return;
   }
-
-  items.forEach((item, index) => {
-    const card = createCard(item, zone, index);
+  const fragment = document.createDocumentFragment();
+  trashItems.forEach((item, index) => {
+    const card = createCard(item, "trash", index);
     fragment.appendChild(card);
   });
-  root.appendChild(fragment);
+  trashRoot.appendChild(fragment);
 }
 
 function createCard(item, zone, index) {
@@ -423,7 +404,8 @@ function createCard(item, zone, index) {
   const subtitle = node.querySelector(".card-subtitle");
   const input = node.querySelector(".card-input");
   const copyBtn = node.querySelector(".copy-btn");
-  const toggleBtn = node.querySelector(".toggle-btn");
+  const phaseBtn = node.querySelector(".phase-select-btn");
+  const phaseMenu = node.querySelector(".phase-menu");
   const editBtn = node.querySelector(".edit-btn");
   const clearInputBtn = node.querySelector(".clear-input-btn");
   const deleteBtn = node.querySelector(".delete-btn");
@@ -438,8 +420,7 @@ function createCard(item, zone, index) {
   const cancelEditBtn = node.querySelector(".cancel-edit-btn");
 
   title.textContent = item.title;
-  subtitle.textContent = item.category || "未分类";
-  subtitle.classList.remove("hidden");
+  subtitle.textContent = item.category || UNGROUPED;
   preview.textContent = item.prompt;
   if (previewSummary) {
     const usage = document.createElement("span");
@@ -449,21 +430,30 @@ function createCard(item, zone, index) {
   }
   input.value = inputStore.get(item.id) || "";
 
-  if (zone === "common") {
+  // Drag
+  if (zone !== "trash") {
     node.setAttribute("draggable", "true");
     node.classList.add("draggable");
-    bindDragEvents(node, item.id);
-    toggleBtn.textContent = "移到替补";
-    toggleBtn.classList.add("warning");
-  } else if (zone === "pool") {
-    toggleBtn.textContent = "加入主力";
-    toggleBtn.classList.add("secondary");
-  } else {
-    toggleBtn.textContent = "加入主力";
-    toggleBtn.classList.add("secondary");
-    node.removeAttribute("draggable");
+    bindDragEvents(node, item.id, zone);
   }
 
+  // Phase move / restore button
+  if (zone !== "trash") {
+    phaseBtn.textContent = "移至…";
+    phaseBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      togglePhaseMenu(node, item.id);
+    });
+  } else {
+    phaseBtn.textContent = "恢复";
+    phaseBtn.classList.add("secondary");
+    phaseBtn.classList.remove("phase-select-btn");
+    phaseBtn.addEventListener("click", () => {
+      restoreFromTrash(item.id);
+    });
+  }
+
+  // Edit/delete visibility
   const isCustomCard = item.source === "custom";
   if (isCustomCard && zone !== "trash") {
     editBtn.classList.remove("hidden");
@@ -480,15 +470,11 @@ function createCard(item, zone, index) {
   copyBtn.addEventListener("click", async () => {
     const content = mergePromptAndInput(item.prompt, input.value);
     if (input.value.trim()) {
-      const nextCount = incrementUsageCount(item.id, { skipRender: true });
+      incrementUsageCount(item.id, { skipRender: true });
       const usageNode = node.querySelector(".usage-count");
-      if (usageNode) {
-        usageNode.textContent = `使用 ${nextCount} 次`;
-      }
-      if (state.sortByUsage) {
-        state.sortByUsage = false;
-        saveState();
-      }
+      if (usageNode) usageNode.textContent = `使用 ${getUsageCount(item.id)} 次`;
+      // Re-render to update step numbers silently
+      render({ suppressAnimation: true });
     }
     try {
       await copyToClipboard(content);
@@ -498,22 +484,8 @@ function createCard(item, zone, index) {
     }
   });
 
-  toggleBtn.addEventListener("click", () => {
-    if (zone === "trash") {
-      restoreFromTrash(item.id);
-      return;
-    }
-    if (zone === "common") {
-      removeFromCommon(item.id);
-    } else {
-      addToCommon(item.id);
-    }
-  });
-
   editBtn.addEventListener("click", () => {
-    if (node.querySelector(".inline-title-edit")) {
-      return;
-    }
+    if (node.querySelector(".inline-title-edit")) return;
     const inlineInput = document.createElement("input");
     inlineInput.type = "text";
     inlineInput.className = "inline-title-edit";
@@ -534,38 +506,21 @@ function createCard(item, zone, index) {
       const newTitle = inlineInput.value.trim();
       inlineInput.remove();
       title.classList.remove("hidden");
-      if (!commit) {
-        return;
-      }
-      if (!newTitle) {
-        setStatus(status, "标题不能为空", "error");
-        return;
-      }
-      if (newTitle === item.title) {
-        return;
-      }
+      if (!commit) return;
+      if (!newTitle) { setStatus(status, "标题不能为空", "error"); return; }
+      if (newTitle === item.title) return;
       updateCard(item.id, newTitle, item.prompt);
     };
 
     inlineInput.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        finish(true);
-      } else if (event.key === "Escape") {
-        event.preventDefault();
-        finish(false);
-      }
+      if (event.key === "Enter") { event.preventDefault(); finish(true); }
+      else if (event.key === "Escape") { event.preventDefault(); finish(false); }
     });
     inlineInput.addEventListener("blur", () => finish(true));
   });
 
-  saveEditBtn.addEventListener("click", () => {
-    editPanel.classList.add("hidden");
-  });
-
-  cancelEditBtn.addEventListener("click", () => {
-    editPanel.classList.add("hidden");
-  });
+  saveEditBtn.addEventListener("click", () => { editPanel.classList.add("hidden"); });
+  cancelEditBtn.addEventListener("click", () => { editPanel.classList.add("hidden"); });
 
   clearInputBtn.addEventListener("click", () => {
     input.value = "";
@@ -580,20 +535,454 @@ function createCard(item, zone, index) {
   return node;
 }
 
+function togglePhaseMenu(cardNode, cardId) {
+  const menu = cardNode.querySelector(".phase-menu");
+  if (!menu) return;
+
+  // Close any other open menu
+  if (openPhaseMenu && openPhaseMenu !== menu) {
+    openPhaseMenu.classList.add("hidden");
+  }
+
+  const isOpen = !menu.classList.contains("hidden");
+  if (isOpen) {
+    menu.classList.add("hidden");
+    openPhaseMenu = null;
+    return;
+  }
+
+  // Populate menu with phases
+  const phases = getPhaseDisplayOrder(state, allItems);
+  // Clear existing options except the first (__ungrouped__)
+  menu.querySelectorAll(".phase-option").forEach((btn) => btn.remove());
+
+  phases.forEach((phase) => {
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.className = "phase-option";
+    btn.type = "button";
+    btn.textContent = phase;
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      moveCardToPhase(cardId, phase);
+      menu.classList.add("hidden");
+      openPhaseMenu = null;
+    });
+    li.appendChild(btn);
+    menu.appendChild(li);
+  });
+
+  menu.classList.remove("hidden");
+  openPhaseMenu = menu;
+
+  // Close on outside click
+  const closeHandler = (e) => {
+    if (!menu.contains(e.target) && e.target !== cardNode.querySelector(".phase-select-btn")) {
+      menu.classList.add("hidden");
+      openPhaseMenu = null;
+      document.removeEventListener("click", closeHandler);
+    }
+  };
+  setTimeout(() => document.addEventListener("click", closeHandler), 0);
+}
+
+/* ── Drag and drop ── */
+
+function bindDragEvents(node, cardId, phaseName) {
+  node.addEventListener("dragstart", (event) => {
+    draggingId = cardId;
+    node.classList.add("dragging");
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", cardId);
+  });
+
+  node.addEventListener("dragend", () => {
+    draggingId = null;
+    node.classList.remove("dragging");
+    clearDragState();
+  });
+
+  node.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    if (draggingId === cardId) return;
+    node.classList.add("drag-over");
+  });
+
+  node.addEventListener("dragleave", () => {
+    node.classList.remove("drag-over");
+  });
+
+  node.addEventListener("drop", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    node.classList.remove("drag-over");
+    const sourceId = draggingId || event.dataTransfer.getData("text/plain");
+    if (!sourceId || sourceId === cardId) return;
+
+    const sourcePhase = findCardPhase(sourceId);
+    const targetPhase = phaseName;
+
+    if (sourcePhase === targetPhase) {
+      reorderWithinPhase(sourceId, cardId, targetPhase);
+    } else {
+      moveCardBetweenPhases(sourceId, cardId, sourcePhase, targetPhase);
+    }
+  });
+}
+
+// Flat grid drop target
+phasesRoot.addEventListener("dragover", (event) => {
+  event.preventDefault();
+});
+
+phasesRoot.addEventListener("drop", (event) => {
+  const target = event.target;
+  const cardNode = target.closest(".card");
+  if (cardNode) return;
+  if (!draggingId) return;
+  const phase = findCardPhase(draggingId);
+  moveToEndOfPhase(draggingId, phase);
+});
+
+// Trash drop target
+if (trashPanel) {
+  trashPanel.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    trashPanel.classList.add("drop-target");
+  });
+  trashPanel.addEventListener("dragleave", () => {
+    trashPanel.classList.remove("drop-target");
+  });
+  trashPanel.addEventListener("drop", (event) => {
+    event.preventDefault();
+    trashPanel.classList.remove("drop-target");
+    const sourceId = draggingId;
+    if (!sourceId) return;
+    deleteCard(sourceId);
+  });
+}
+
+function clearDragState() {
+  document.querySelectorAll(".card.drag-over").forEach((n) => n.classList.remove("drag-over"));
+}
+
+function findCardPhase(cardId) {
+  for (const [phase, ids] of Object.entries(state.phaseOrder)) {
+    if (ids.includes(cardId)) return phase;
+  }
+  // Fallback: find by category
+  const item = allItems.find((i) => i.id === cardId);
+  return item ? (item.category || UNGROUPED) : UNGROUPED;
+}
+
+function reorderWithinPhase(sourceId, targetId, phaseName) {
+  const arr = [...(state.phaseOrder[phaseName] || [])];
+  const srcIdx = arr.indexOf(sourceId);
+  const tgtIdx = arr.indexOf(targetId);
+  if (srcIdx === -1 || tgtIdx === -1) return;
+  const [moved] = arr.splice(srcIdx, 1);
+  const insertIdx = srcIdx < tgtIdx ? tgtIdx - 1 : tgtIdx;
+  arr.splice(insertIdx, 0, moved);
+  state.phaseOrder[phaseName] = arr;
+  commitState();
+}
+
+function moveToEndOfPhase(cardId, phaseName) {
+  const arr = (state.phaseOrder[phaseName] || []).filter((id) => id !== cardId);
+  arr.push(cardId);
+  state.phaseOrder[phaseName] = arr;
+  commitState();
+}
+
+function moveCardBetweenPhases(sourceId, targetId, sourcePhase, targetPhase) {
+  // Remove from source
+  if (state.phaseOrder[sourcePhase]) {
+    state.phaseOrder[sourcePhase] = state.phaseOrder[sourcePhase].filter((id) => id !== sourceId);
+  }
+  // Insert before target in target phase
+  const arr = [...(state.phaseOrder[targetPhase] || [])];
+  const tgtIdx = arr.indexOf(targetId);
+  if (tgtIdx === -1) {
+    arr.push(sourceId);
+  } else {
+    arr.splice(tgtIdx, 0, sourceId);
+  }
+  state.phaseOrder[targetPhase] = arr;
+
+  // Update card category to match target phase
+  updateCardCategory(sourceId, targetPhase);
+  commitState();
+}
+
+function moveCardToPhase(cardId, targetPhase) {
+  const sourcePhase = findCardPhase(cardId);
+  if (state.phaseOrder[sourcePhase]) {
+    state.phaseOrder[sourcePhase] = state.phaseOrder[sourcePhase].filter((id) => id !== cardId);
+  }
+  if (!state.phaseOrder[targetPhase]) state.phaseOrder[targetPhase] = [];
+  state.phaseOrder[targetPhase].push(cardId);
+  updateCardCategory(cardId, targetPhase);
+  commitState();
+}
+
+function updateCardCategory(cardId, newCategory) {
+  const item = allItems.find((c) => c.id === cardId);
+  if (!item) return;
+  if (item.source === "custom") {
+    state.customCards = state.customCards.map((c) =>
+      c.id === cardId ? { ...c, category: newCategory } : c
+    );
+  } else {
+    if (!state.editedCards[cardId]) {
+      state.editedCards[cardId] = { title: item.title, prompt: item.prompt };
+    }
+    state.editedCards[cardId].category = newCategory;
+  }
+}
+
+/* ── Card CRUD ── */
+
+function addNewCard(title, prompt) {
+  const id = buildCustomCardId();
+  state.customCards.push({ id, title, category: UNGROUPED, prompt });
+  if (!state.phaseOrder[phase]) state.phaseOrder[phase] = [];
+  state.phaseOrder[phase].push(id);
+  commitState();
+}
+
+function updateCard(cardId, newTitle, newPrompt) {
+  const item = allItems.find((card) => card.id === cardId);
+  if (!item) return;
+  if (item.source === "custom") {
+    state.customCards = state.customCards.map((card) =>
+      card.id === cardId ? { ...card, title: newTitle, prompt: newPrompt } : card
+    );
+  } else {
+    state.editedCards[cardId] = {
+      ...(state.editedCards[cardId] || {}),
+      title: newTitle,
+      prompt: newPrompt,
+    };
+  }
+  commitState();
+}
+
+function deleteCard(cardId) {
+  const item = allItems.find((card) => card.id === cardId);
+  if (!item) return;
+
+  if (item.source === "custom") {
+    state.trashedCustomCards = state.trashedCustomCards || [];
+    if (!state.trashedCustomCards.some((card) => card.id === cardId)) {
+      state.trashedCustomCards.push({
+        id: item.id, title: item.title,
+        category: item.category || UNGROUPED, prompt: item.prompt,
+      });
+    }
+    state.customCards = state.customCards.filter((card) => card.id !== cardId);
+  } else {
+    if (!state.deletedCardIds.includes(cardId)) state.deletedCardIds.push(cardId);
+  }
+
+  // Remove from phase order
+  for (const phase of Object.keys(state.phaseOrder)) {
+    state.phaseOrder[phase] = state.phaseOrder[phase].filter((id) => id !== cardId);
+  }
+
+  delete state.editedCards[cardId];
+  resetUsageCount(cardId);
+  inputStore.delete(cardId);
+  commitState();
+}
+
+function restoreFromTrash(cardId) {
+  const list = state.trashedCustomCards || [];
+  const item = list.find((card) => card.id === cardId);
+  if (!item) return;
+  state.trashedCustomCards = list.filter((card) => card.id !== cardId);
+  if (!state.customCards.some((card) => card.id === cardId)) {
+    state.customCards.push({
+      id: item.id, title: item.title,
+      category: item.category || UNGROUPED, prompt: item.prompt,
+    });
+  }
+  const phase = item.category || UNGROUPED;
+  if (!state.phaseOrder[phase]) state.phaseOrder[phase] = [];
+  if (!state.phaseOrder[phase].includes(cardId)) state.phaseOrder[phase].push(cardId);
+  commitState();
+}
+
+function clearTrash() {
+  if (!state.trashedCustomCards || state.trashedCustomCards.length === 0) return;
+  state.trashedCustomCards = [];
+  commitState();
+}
+
+/* ── Usage tracking ── */
+
+function getUsageCount(cardId) {
+  const map = state.usageCountById || {};
+  const value = Number(map[cardId] || 0);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
+}
+
+function incrementUsageCount(cardId, options) {
+  if (!state.usageCountById || typeof state.usageCountById !== "object") state.usageCountById = {};
+  const current = getUsageCount(cardId);
+  state.usageCountById[cardId] = current + 1;
+  saveState();
+  if (!options || !options.skipRender) render({ suppressAnimation: true });
+  return current + 1;
+}
+
+function resetUsageCount(cardId) {
+  if (!state.usageCountById || typeof state.usageCountById !== "object") return;
+  if (state.usageCountById[cardId]) delete state.usageCountById[cardId];
+}
+
+function resetAllUsageCount() {
+  state.usageCountById = {};
+  commitState();
+}
+
+/* ── State management ── */
+
+function createDefaultState() {
+  return {
+    phaseOrder: {},
+    customCards: [],
+    trashedCustomCards: [],
+    usageCountById: {},
+    editedCards: {},
+    deletedCardIds: [],
+  };
+}
+
+function normalizeState(raw) {
+  const next = createDefaultState();
+  if (!raw || typeof raw !== "object") return next;
+
+  if (raw.phaseOrder && typeof raw.phaseOrder === "object") {
+    Object.keys(raw.phaseOrder).forEach((phase) => {
+      if (Array.isArray(raw.phaseOrder[phase])) {
+        next.phaseOrder[phase] = raw.phaseOrder[phase].filter((id) => typeof id === "string");
+      }
+    });
+  }
+  if (Array.isArray(raw.customCards)) {
+    next.customCards = raw.customCards
+      .filter((card) => card && typeof card === "object")
+      .map((card) => ({
+        id: String(card.id || "").trim(),
+        title: String(card.title || "").trim(),
+        category: String(card.category || "").trim() || UNGROUPED,
+        prompt: String(card.prompt || "").trim(),
+      }))
+      .filter((card) => card.id && card.title && card.prompt);
+  }
+  if (Array.isArray(raw.trashedCustomCards)) {
+    next.trashedCustomCards = raw.trashedCustomCards
+      .filter((card) => card && typeof card === "object")
+      .map((card) => ({
+        id: String(card.id || "").trim(),
+        title: String(card.title || "").trim(),
+        category: String(card.category || "").trim() || UNGROUPED,
+        prompt: String(card.prompt || "").trim(),
+      }))
+      .filter((card) => card.id && card.title && card.prompt);
+  }
+  if (raw.usageCountById && typeof raw.usageCountById === "object") {
+    Object.keys(raw.usageCountById).forEach((id) => {
+      const count = Number(raw.usageCountById[id]);
+      if (!id || !Number.isFinite(count) || count <= 0) return;
+      next.usageCountById[id] = Math.floor(count);
+    });
+  }
+  if (raw.editedCards && typeof raw.editedCards === "object") {
+    Object.keys(raw.editedCards).forEach((id) => {
+      const patch = raw.editedCards[id];
+      if (!patch || typeof patch !== "object") return;
+      const title = String(patch.title || "").trim();
+      const prompt = String(patch.prompt || "").trim();
+      if (!title || !prompt) return;
+      next.editedCards[id] = { title, prompt };
+      if (patch.category && typeof patch.category === "string") {
+        next.editedCards[id].category = patch.category.trim();
+      }
+    });
+  }
+  if (Array.isArray(raw.deletedCardIds)) {
+    next.deletedCardIds = raw.deletedCardIds.filter((id) => typeof id === "string");
+  }
+  return next;
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return createDefaultState();
+    return JSON.parse(raw);
+  } catch (error) {
+    return createDefaultState();
+  }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, updatedAt: Date.now() }));
+  } catch (error) { /* Ignore */ }
+}
+
+function commitState(options = {}) {
+  refreshAllItems();
+  state.phaseOrder = ensurePhaseOrder(state.phaseOrder, allItems);
+  saveState();
+  render(options);
+}
+
+function refreshAllItems() {
+  allItems = materializeItems(baseItems, state);
+}
+
+function materializeItems(base, currentState) {
+  const deleted = new Set(currentState.deletedCardIds);
+  const edited = currentState.editedCards || {};
+  const seen = new Set();
+  const output = [];
+
+  base.forEach((item) => {
+    if (deleted.has(item.id)) return;
+    const patch = edited[item.id];
+    const next = {
+      id: item.id,
+      title: patch && typeof patch.title === "string" ? patch.title : item.title,
+      category: patch && patch.category ? patch.category : (item.category || UNGROUPED),
+      prompt: patch && typeof patch.prompt === "string" ? patch.prompt : item.prompt,
+      source: "base",
+    };
+    if (!next.title || !next.prompt || seen.has(next.id)) return;
+    seen.add(next.id);
+    output.push(next);
+  });
+
+  currentState.customCards.forEach((item) => {
+    if (!item || !item.id || !item.title || !item.prompt) return;
+    if (seen.has(item.id)) return;
+    seen.add(item.id);
+    output.push({
+      id: item.id, title: item.title,
+      category: item.category || UNGROUPED, prompt: item.prompt, source: "custom",
+    });
+  });
+
+  return output;
+}
+
+/* ── Add modal ── */
+
 function bindAddCardPanel() {
-  if (
-    !openAddBtn ||
-    !addModal ||
-    !addModalMask ||
-    !metaTemplateInput ||
-    !metaNeedInput ||
-    !copyMetaBtn ||
-    !metaStatusText ||
-    !addPromptInput ||
-    !createCardBtn ||
-    !cancelAddBtn ||
-    !addStatusText
-  ) {
+  if (!openAddBtn || !addModal || !addModalMask || !metaTemplateInput || !metaNeedInput ||
+      !copyMetaBtn || !metaStatusText || !addPromptInput || !createCardBtn || !cancelAddBtn || !addStatusText) {
     return;
   }
 
@@ -604,13 +993,8 @@ function bindAddCardPanel() {
     metaNeedInput.focus();
   });
 
-  addModalMask.addEventListener("click", () => {
-    closeAddPanel();
-  });
-
-  cancelAddBtn.addEventListener("click", () => {
-    closeAddPanel();
-  });
+  addModalMask.addEventListener("click", () => closeAddPanel());
+  cancelAddBtn.addEventListener("click", () => closeAddPanel());
 
   copyMetaBtn.addEventListener("click", async () => {
     const need = metaNeedInput.value.trim();
@@ -644,34 +1028,21 @@ function bindAddCardPanel() {
 }
 
 function closeAddPanel() {
-  if (!addModal) {
-    return;
-  }
+  if (!addModal) return;
   addModal.classList.add("hidden");
-  metaNeedInput.value = "";
-  metaStatusText.textContent = "";
-  metaStatusText.className = "meta-status";
-  addPromptInput.value = "";
-  addStatusText.textContent = "";
-  addStatusText.className = "add-status";
+  if (metaNeedInput) metaNeedInput.value = "";
+  if (metaStatusText) { metaStatusText.textContent = ""; metaStatusText.className = "meta-status"; }
+  if (addPromptInput) addPromptInput.value = "";
+  if (addStatusText) { addStatusText.textContent = ""; addStatusText.className = "add-status"; }
 }
 
 function parseGeneratedSkill(rawText) {
-  const lines = String(rawText || "")
-    .split(/\r?\n/)
-    .map((line) => line.trim());
+  const lines = String(rawText || "").split(/\r?\n/).map((line) => line.trim());
   const nonEmpty = lines.filter(Boolean);
-  if (nonEmpty.length < 2) {
-    return null;
-  }
-  let title = nonEmpty[0]
-    .replace(/^#+\s*/, "")
-    .replace(/^标题[:：]\s*/i, "")
-    .trim();
+  if (nonEmpty.length < 2) return null;
+  let title = nonEmpty[0].replace(/^#+\s*/, "").replace(/^标题[:：]\s*/i, "").trim();
   const prompt = nonEmpty.slice(1).join("\n").trim();
-  if (!title || !prompt) {
-    return null;
-  }
+  if (!title || !prompt) return null;
   return { title, prompt };
 }
 
@@ -681,436 +1052,24 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-function bindDragEvents(node, cardId) {
-  node.addEventListener("dragstart", (event) => {
-    draggingId = cardId;
-    node.classList.add("dragging");
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", cardId);
-  });
+/* ── Card from trash ── */
 
-  node.addEventListener("dragend", () => {
-    draggingId = null;
-    node.classList.remove("dragging");
-    clearDragState();
-  });
 
-  node.addEventListener("dragover", (event) => {
-    event.preventDefault();
-    if (draggingId === cardId) {
-      return;
-    }
-    node.classList.add("drag-over");
-  });
-
-  node.addEventListener("dragleave", () => {
-    node.classList.remove("drag-over");
-  });
-
-  node.addEventListener("drop", (event) => {
-    event.preventDefault();
-    node.classList.remove("drag-over");
-    const sourceId = draggingId || event.dataTransfer.getData("text/plain");
-    if (!sourceId || sourceId === cardId) {
-      return;
-    }
-    reorderCommon(sourceId, cardId);
-  });
-}
-
-function clearDragState() {
-  commonRoot.querySelectorAll(".card.drag-over").forEach((node) => {
-    node.classList.remove("drag-over");
-  });
-}
-
-function reorderCommon(sourceId, targetId) {
-  const arr = [...state.commonIds];
-  const sourceIndex = arr.indexOf(sourceId);
-  const targetIndex = arr.indexOf(targetId);
-  if (sourceIndex === -1 || targetIndex === -1) {
-    return;
-  }
-  const [moved] = arr.splice(sourceIndex, 1);
-  const insertIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
-  arr.splice(insertIndex, 0, moved);
-  state.commonIds = arr;
-  commitState();
-}
-
-function moveCommonToEnd(cardId) {
-  const arr = state.commonIds.filter((id) => id !== cardId);
-  arr.push(cardId);
-  state.commonIds = arr;
-  commitState();
-}
-
-function addToCommon(cardId) {
-  if (state.commonIds.includes(cardId)) {
-    return;
-  }
-  state.commonIds = [...state.commonIds, cardId];
-  commitState();
-}
-
-function removeFromCommon(cardId) {
-  state.commonIds = state.commonIds.filter((id) => id !== cardId);
-  resetUsageCount(cardId);
-  commitState();
-}
-
-function addNewCard(title, prompt) {
-  const id = buildCustomCardId();
-  state.customCards.push({
-    id,
-    title,
-    category: "未分类",
-    prompt,
-  });
-  state.commonIds.push(id);
-  commitState();
-}
-
-function updateCard(cardId, newTitle, newPrompt) {
-  const item = allItems.find((card) => card.id === cardId);
-  if (!item) {
-    return;
-  }
-
-  if (item.source === "custom") {
-    state.customCards = state.customCards.map((card) =>
-      card.id === cardId ? { ...card, title: newTitle, prompt: newPrompt } : card
-    );
-  } else {
-    state.editedCards[cardId] = {
-      title: newTitle,
-      prompt: newPrompt,
-    };
-  }
-  commitState();
-}
-
-function deleteCard(cardId) {
-  const item = allItems.find((card) => card.id === cardId);
-  if (!item) {
-    return;
-  }
-
-  if (item.source === "custom") {
-    state.trashedCustomCards = state.trashedCustomCards || [];
-    if (!state.trashedCustomCards.some((card) => card.id === cardId)) {
-      state.trashedCustomCards.push({
-        id: item.id,
-        title: item.title,
-        category: item.category || "未分类",
-        prompt: item.prompt,
-      });
-    }
-    state.customCards = state.customCards.filter((card) => card.id !== cardId);
-  } else {
-    if (!state.deletedCardIds.includes(cardId)) {
-      state.deletedCardIds.push(cardId);
-    }
-  }
-
-  delete state.editedCards[cardId];
-  state.commonIds = state.commonIds.filter((id) => id !== cardId);
-  resetUsageCount(cardId);
-  inputStore.delete(cardId);
-  commitState();
-}
-
-function restoreFromTrash(cardId) {
-  const list = state.trashedCustomCards || [];
-  const item = list.find((card) => card.id === cardId);
-  if (!item) {
-    return;
-  }
-  state.trashedCustomCards = list.filter((card) => card.id !== cardId);
-  if (!state.customCards.some((card) => card.id === cardId)) {
-    state.customCards.push({
-      id: item.id,
-      title: item.title,
-      category: item.category || "未分类",
-      prompt: item.prompt,
-    });
-  }
-  if (!state.commonIds.includes(cardId)) {
-    state.commonIds.push(cardId);
-  }
-  commitState();
-}
-
-function clearTrash() {
-  if (!state.trashedCustomCards || state.trashedCustomCards.length === 0) {
-    return;
-  }
-  state.trashedCustomCards = [];
-  commitState();
-}
-
-function getUsageCount(cardId) {
-  const map = state.usageCountById || {};
-  const value = Number(map[cardId] || 0);
-  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
-}
-
-function incrementUsageCount(cardId, options) {
-  if (!state.usageCountById || typeof state.usageCountById !== "object") {
-    state.usageCountById = {};
-  }
-  const current = getUsageCount(cardId);
-  const next = current + 1;
-  state.usageCountById[cardId] = next;
-  saveState();
-  if (!options || !options.skipRender) {
-    render({ suppressAnimation: true });
-  }
-  return next;
-}
-
-function resetUsageCount(cardId) {
-  if (!state.usageCountById || typeof state.usageCountById !== "object") {
-    return;
-  }
-  if (state.usageCountById[cardId]) {
-    delete state.usageCountById[cardId];
-  }
-}
-
-function resetAllUsageCount() {
-  state.usageCountById = {};
-  commitState();
-}
-
-function applyUsageSort() {
-  if (state.sortByUsage) {
-    return;
-  }
-  const orderMap = new Map(state.commonIds.map((id, index) => [id, index]));
-  state.commonIds = [...state.commonIds].sort((a, b) => {
-    const diff = getUsageCount(b) - getUsageCount(a);
-    if (diff !== 0) {
-      return diff;
-    }
-    return (orderMap.get(a) || 0) - (orderMap.get(b) || 0);
-  });
-  state.sortByUsage = true;
-  commitState({ suppressAnimation: true });
-}
+/* ── Utilities ── */
 
 function buildCustomCardId() {
   const existing = new Set(allItems.map((item) => item.id));
   let id = "";
-  do {
-    id = `custom-${Math.random().toString(36).slice(2, 9)}`;
-  } while (existing.has(id));
+  do { id = `custom-${Math.random().toString(36).slice(2, 9)}`; } while (existing.has(id));
   return id;
-}
-
-function commitState(options = {}) {
-  refreshAllItems();
-  state.commonIds = normalizeCommonIds(state.commonIds, allItems);
-  saveState();
-  render(options);
-}
-
-function refreshAllItems() {
-  allItems = materializeItems(baseItems, state);
-}
-
-function materializeItems(base, currentState) {
-  const deleted = new Set(currentState.deletedCardIds);
-  const edited = currentState.editedCards || {};
-  const seen = new Set();
-  const output = [];
-
-  base.forEach((item) => {
-    if (deleted.has(item.id)) {
-      return;
-    }
-    const patch = edited[item.id];
-    const next = {
-      id: item.id,
-      title: patch && typeof patch.title === "string" ? patch.title : item.title,
-      category: item.category || "未分类",
-      prompt: patch && typeof patch.prompt === "string" ? patch.prompt : item.prompt,
-      source: "base",
-    };
-    if (!next.title || !next.prompt || seen.has(next.id)) {
-      return;
-    }
-    seen.add(next.id);
-    output.push(next);
-  });
-
-  currentState.customCards.forEach((item) => {
-    if (!item || !item.id || !item.title || !item.prompt) {
-      return;
-    }
-    if (seen.has(item.id)) {
-      return;
-    }
-    seen.add(item.id);
-    output.push({
-      id: item.id,
-      title: item.title,
-      category: item.category || "未分类",
-      prompt: item.prompt,
-      source: "custom",
-    });
-  });
-
-  return output;
-}
-
-function normalizeCommonIds(ids, items) {
-  if (!Array.isArray(ids) || ids.length === 0) {
-    return [];
-  }
-  const validSet = new Set(items.map((item) => item.id));
-  const normalized = [];
-  ids.forEach((id) => {
-    if (validSet.has(id) && !normalized.includes(id)) {
-      normalized.push(id);
-    }
-  });
-  return normalized;
-}
-
-function buildDefaultCommonIds(items) {
-  const byTitle = new Map(items.map((item) => [item.title, item.id]));
-  const selected = [];
-
-  DEFAULT_COMMON_TITLES.forEach((title) => {
-    const id = byTitle.get(title);
-    if (id && !selected.includes(id)) {
-      selected.push(id);
-    }
-  });
-
-  const fallback = items.map((item) => item.id).filter((id) => !selected.includes(id));
-  while (selected.length < Math.min(4, items.length) && fallback.length > 0) {
-    selected.push(fallback.shift());
-  }
-
-  return selected;
-}
-
-function createDefaultState() {
-  return {
-    commonIds: [],
-    customCards: [],
-    trashedCustomCards: [],
-    usageCountById: {},
-    sortByUsage: false,
-    editedCards: {},
-    deletedCardIds: [],
-  };
-}
-
-function normalizeState(raw) {
-  const next = createDefaultState();
-  if (!raw || typeof raw !== "object") {
-    return next;
-  }
-
-  if (Array.isArray(raw.commonIds)) {
-    next.commonIds = raw.commonIds.filter((id) => typeof id === "string");
-  }
-  if (Array.isArray(raw.customCards)) {
-    next.customCards = raw.customCards
-      .filter((card) => card && typeof card === "object")
-      .map((card) => ({
-        id: String(card.id || "").trim(),
-        title: String(card.title || "").trim(),
-        category: String(card.category || "").trim() || "未分类",
-        prompt: String(card.prompt || "").trim(),
-      }))
-      .filter((card) => card.id && card.title && card.prompt);
-  }
-  if (Array.isArray(raw.trashedCustomCards)) {
-    next.trashedCustomCards = raw.trashedCustomCards
-      .filter((card) => card && typeof card === "object")
-      .map((card) => ({
-        id: String(card.id || "").trim(),
-        title: String(card.title || "").trim(),
-        category: String(card.category || "").trim() || "未分类",
-        prompt: String(card.prompt || "").trim(),
-      }))
-      .filter((card) => card.id && card.title && card.prompt);
-  }
-  if (raw.usageCountById && typeof raw.usageCountById === "object") {
-    Object.keys(raw.usageCountById).forEach((id) => {
-      const count = Number(raw.usageCountById[id]);
-      if (!id || !Number.isFinite(count) || count <= 0) {
-        return;
-      }
-      next.usageCountById[id] = Math.floor(count);
-    });
-  }
-  if (typeof raw.sortByUsage === "boolean") {
-    next.sortByUsage = raw.sortByUsage;
-  }
-  if (raw.editedCards && typeof raw.editedCards === "object") {
-    Object.keys(raw.editedCards).forEach((id) => {
-      const patch = raw.editedCards[id];
-      if (!patch || typeof patch !== "object") {
-        return;
-      }
-      const title = String(patch.title || "").trim();
-      const prompt = String(patch.prompt || "").trim();
-      if (!title || !prompt) {
-        return;
-      }
-      next.editedCards[id] = { title, prompt };
-    });
-  }
-  if (Array.isArray(raw.deletedCardIds)) {
-    next.deletedCardIds = raw.deletedCardIds.filter((id) => typeof id === "string");
-  }
-
-  return next;
-}
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return createDefaultState();
-    }
-    return JSON.parse(raw);
-  } catch (error) {
-    return createDefaultState();
-  }
-}
-
-function saveState() {
-  try {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        ...state,
-        updatedAt: Date.now(),
-      })
-    );
-  } catch (error) {
-    // Ignore persistence failures.
-  }
 }
 
 function mergePromptAndInput(promptTemplate, inputText) {
   const template = (promptTemplate || "").trim();
   const userText = (inputText || "").trim();
-  if (!userText) {
-    return template;
-  }
-
+  if (!userText) return template;
   const placeholderRegex = /\[在此处粘贴[^\]]*\]/g;
-  if (placeholderRegex.test(template)) {
-    return template.replace(placeholderRegex, userText);
-  }
-
+  if (placeholderRegex.test(template)) return template.replace(placeholderRegex, userText);
   return `${template}\n\n${userText}`;
 }
 
@@ -1119,7 +1078,6 @@ async function copyToClipboard(text) {
     await navigator.clipboard.writeText(text);
     return;
   }
-
   const textarea = document.createElement("textarea");
   textarea.value = text;
   textarea.setAttribute("readonly", "");
@@ -1130,17 +1088,13 @@ async function copyToClipboard(text) {
   textarea.select();
   const ok = document.execCommand("copy");
   textarea.remove();
-  if (!ok) {
-    throw new Error("copy failed");
-  }
+  if (!ok) throw new Error("copy failed");
 }
 
 function setStatus(element, text, stateClass) {
   element.textContent = text;
   element.classList.remove("success", "error");
-  if (stateClass) {
-    element.classList.add(stateClass);
-  }
+  if (stateClass) element.classList.add(stateClass);
 }
 
 function showNotice(text) {

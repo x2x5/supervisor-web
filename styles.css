@@ -129,115 +129,24 @@ body {
   background: rgba(255, 255, 255, 0.85);
 }
 
-.cards {
+/* ── Cards grid ── */
+
+#phasesRoot {
   margin-top: 18px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
 
-.zone {
-  margin-top: 18px;
-  padding: 16px;
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-md);
-}
-
-.page-footer {
-  margin-top: 18px;
-  padding: 10px 2px 2px;
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-.page-footer a {
-  color: #1e6089;
-  text-decoration: none;
-  border-bottom: 1px solid rgba(30, 96, 137, 0.28);
-}
-
-.page-footer a:hover {
-  border-bottom-color: rgba(30, 96, 137, 0.55);
-}
-
-.zone-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.zone-head h2 {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.zone-head-main {
-  display: flex;
-  align-items: center;
-}
-
-.zone-head p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.86rem;
-  margin-left: auto;
-}
-
-.clear-trash-btn {
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: 9px;
-  border: 1px solid rgba(190, 68, 88, 0.32);
-  background: rgba(190, 68, 88, 0.1);
-  color: #9d3040;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.pool-zone > summary,
-.trash-zone > summary {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.pool-zone > summary::-webkit-details-marker,
-.trash-zone > summary::-webkit-details-marker {
-  display: none;
-}
-
-.pool-zone > summary::before,
-.trash-zone > summary::before {
-  content: "▸";
-  display: inline-block;
-  margin-right: 8px;
-  transition: transform 120ms ease;
-}
-
-.pool-zone[open] > summary::before,
-.trash-zone[open] > summary::before {
-  transform: rotate(90deg);
-}
-
-.trash-zone > summary {
-  justify-content: flex-start;
-}
-
-.trash-zone .clear-trash-btn {
-  margin-left: auto;
-}
+/* ── Cards with step badge ── */
 
 .card {
+  position: relative;
   padding: 16px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   background: var(--surface);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md);
   backdrop-filter: blur(8px);
   display: flex;
   flex-direction: column;
@@ -380,16 +289,57 @@ body.no-enter-anim .card {
   filter: brightness(1.04);
 }
 
-.toggle-btn.secondary {
+.phase-select-btn {
   background: rgba(47, 130, 184, 0.1);
   color: #1e6089;
   border-color: rgba(47, 130, 184, 0.24);
 }
 
-.toggle-btn.warning {
-  background: rgba(190, 68, 88, 0.1);
-  color: #9d3040;
-  border-color: rgba(190, 68, 88, 0.24);
+.phase-select-btn:hover {
+  background: rgba(47, 130, 184, 0.16);
+}
+
+.card-actions button.secondary {
+  background: rgba(47, 130, 184, 0.1);
+  color: #1e6089;
+  border-color: rgba(47, 130, 184, 0.24);
+}
+
+.card-actions button.secondary:hover {
+  background: rgba(47, 130, 184, 0.16);
+}
+
+/* Phase move popup menu */
+.phase-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 8px;
+  z-index: 10;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  background: var(--surface-strong);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  min-width: 140px;
+}
+
+.phase-menu .phase-option {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.86rem;
+  text-align: left;
+  color: var(--text);
+  border-radius: 0;
+}
+
+.phase-menu .phase-option:hover {
+  background: rgba(47, 130, 184, 0.08);
 }
 
 .edit-panel {
@@ -449,22 +399,6 @@ body.no-enter-anim .card {
   color: #166854;
 }
 
-.add-card {
-  justify-content: center;
-  border-style: dashed;
-}
-
-.add-card-head h3 {
-  margin: 0;
-  font-size: 1.02rem;
-}
-
-.add-card-head p {
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 0.86rem;
-}
-
 .hero-actions {
   display: flex;
   align-items: center;
@@ -489,6 +423,68 @@ body.no-enter-anim .card {
   background: rgba(255, 255, 255, 0.98);
   border-color: var(--border-strong);
 }
+
+/* ── Trash ── */
+
+.zone {
+  margin-top: 32px;
+}
+
+.trash-zone {
+  margin-top: 32px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+}
+
+.trash-zone > summary {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.trash-zone > summary::-webkit-details-marker {
+  display: none;
+}
+
+.trash-zone > summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 8px;
+  transition: transform 120ms ease;
+}
+
+.trash-zone[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.trash-zone .clear-trash-btn {
+  margin-left: auto;
+}
+
+.cards-trash {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.clear-trash-btn {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid rgba(190, 68, 88, 0.32);
+  background: rgba(190, 68, 88, 0.1);
+  color: #9d3040;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── Modal ── */
 
 .modal {
   position: fixed;
@@ -708,6 +704,8 @@ body.no-enter-anim .card {
   font-size: 0.9rem;
 }
 
+/* ── Drag and drop ── */
+
 .card.draggable {
   cursor: grab;
 }
@@ -721,14 +719,48 @@ body.no-enter-anim .card {
   outline-offset: 2px;
 }
 
+.phase.drag-phase-active {
+  background: rgba(31, 143, 120, 0.03);
+  border-radius: var(--radius-lg);
+}
+
+/* ── Trash drop target ── */
+
+.trash-zone.drop-target {
+  outline: 2px dashed rgba(190, 68, 88, 0.5);
+  outline-offset: 2px;
+  border-radius: var(--radius-lg);
+}
+
+/* ── Footer ── */
+
+.page-footer {
+  margin-top: 32px;
+  padding: 10px 2px 2px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.page-footer a {
+  color: #1e6089;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(30, 96, 137, 0.28);
+}
+
+.page-footer a:hover {
+  border-bottom-color: rgba(30, 96, 137, 0.55);
+}
+
+/* ── Responsive ── */
+
 @media (max-width: 1180px) {
-  .cards {
+  #phasesRoot {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 920px) {
-  .cards {
+  #phasesRoot {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -747,25 +779,7 @@ body.no-enter-anim .card {
     flex-direction: column;
   }
 
-  .hero-title-wrap {
-    flex-wrap: nowrap;
-  }
-
-  .cards {
+  #phasesRoot {
     grid-template-columns: 1fr;
-    gap: 12px;
   }
-
-  .zone-head {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .pool-zone > summary,
-  .trash-zone > summary {
-    align-items: flex-start;
-    gap: 8px;
-    flex-direction: column;
-  }
-
 }

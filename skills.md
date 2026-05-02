@@ -2,368 +2,7 @@
 
 > 由 Supervisor-Skills 的 `plugins/phd-research/skills/*/SKILL.md` 自动聚合。
 
-### Supervisor Skills
-
-## Benchmark Paper Template
-
-```markdown
----
-name: benchmark-paper-template
-description: Structures Benchmark and Evaluation papers using the five-pillar framework (Research Gap, Construction Pipeline, Evaluation Framework, Empirical Findings, optional Companion Method). Returns a completeness audit, a six-part Introduction logic chain, a Section 2-7 skeleton, and a pre-submission checklist. Use when writing a benchmark paper, structuring a benchmark paper, checking whether a benchmark idea is substantive, drafting a benchmark Introduction, or planning the data-construction pipeline or experiments.
-license: CC-BY-4.0
----
-
-# Benchmark Paper Template
-
-## Overview
-
-A Benchmark paper does not win by proposing a new algorithm. It wins by defining a new evaluation dimension and shipping a construction pipeline that makes the measurement high-quality, scalable, and reproducible. This skill scaffolds the five pillars a reviewer checks, then gives you a six-part Introduction chain, a Section 2-7 skeleton, and a pre-submission checklist. Stage-specific depth lives in seven reference files under `references/`.
-
-## Core capabilities
-
-1. **Five-pillar completeness audit**: is the Research Gap articulated? Is the Construction Pipeline principled? Is the Evaluation Framework fine-grained? Do the Empirical Findings reveal capability boundaries? Is a Companion Method warranted?
-2. **Introduction six-part logic chain**: Background + Running Example, Existing-Benchmark Limitations (no more than three), Research Questions, Design Considerations, Our Proposal, Contributions.
-3. **Section skeleton for §2 to §7**: Task and Design Goals, Construction Pipeline, Optional Companion Method, Experiments organized by RQ, Discussion and Research Opportunities, Related Work with benchmark comparison table, Conclusion.
-4. **Pre-submission self-check**: four-category reviewer checklist (Introduction, Benchmark section, Experiments, Overall) with Critical, Major, Minor severity.
-
-## Benchmark paper vs technical paper
-
-| Dimension | Technical paper | Benchmark paper |
-|---|---|---|
-| Main contribution | Novel algorithm or method | Novel evaluation dimension or dataset |
-| Introduction axis | Key Idea or Mechanism | Evaluation Gap and Benchmark Design Rationale |
-| Problem definition | One-sentence goal | The problem definition IS the contribution |
-| Heaviest chapter | Method | Construction Pipeline + Evaluation Framework |
-| Experiments purpose | Prove "my method beats baselines" | Reveal "where model capability boundaries sit" |
-| Canonical Figure 1 | Method framework diagram | Running example + pipeline diagram |
-
-For technical and position papers, use the `tech-paper-template` skill. For the Introduction outline in isolation, use `intro-drafter`.
-
-## The five pillars
-
-1. **Research Gap**. What dimension of evaluation does existing work miss? Ground the gap in a concrete failure case and cite at least three prior benchmarks whose limitations you are addressing (no more than three). Exemplars: StatQA highlights missing statistical-method appropriateness; nvBench 2.0 highlights query-ambiguity blindness; VisJudge-Bench highlights the fidelity-expressiveness-aesthetics trinity in visualization evaluation.
-2. **Construction Pipeline**. How do you build high-quality, scalable, reproducible data? Three common paradigms: Reverse Synthesis (seed knowledge then instantiate), Controlled Injection (seed queries then inject targeted ambiguity or error), Adaptive Generation with Expert Validation. Specify source selection, generation, annotation, quality control, split strategy, and statistical profile. Deep dive: `references/construction-pipeline.md`.
-3. **Evaluation Framework**. Beyond a single overall score: difficulty tiers, error taxonomy, per-dimension rubrics. Explain why this taxonomy diagnoses what the gap pointed at. Deep dive: `references/benchmark-design.md`.
-4. **Empirical Findings**. Multi-angle comparisons (Human vs LLM, architecture families, error distributions) condensed into bolded *Finding X:* sentences that read like lemmas. Each Finding must be actionable for future research. Deep dive: `references/experiments.md`.
-5. **Companion Method (optional)**. A specialized model tuned for this benchmark signals that the community can act on the findings. Examples: Step-Text2Vis, VisJudge. Not mandatory, but strongly recommended for benchmarks targeting mature tasks.
-
-## Introduction six-part flowchart
-
-1. **Research Background + Running Example (Figure 1)**. Establish the task, why it matters, and one concrete example that threads through the entire paper.
-2. **Existing-Benchmark Limitations**. At most three, each specific and traceable to an evaluation blind spot. Avoid vague "is limited" phrasing.
-3. **Research Questions**. Two or three RQs covering construction quality, capability boundaries, and the human-AI gap.
-4. **Design Considerations**. What should a good benchmark for this dimension have? Quality, scale, coverage, reproducibility, contamination resistance.
-5. **Our Proposal**. One paragraph: the benchmark plus the companion method if any.
-6. **Contributions**. Typically four items: benchmark + pipeline innovation + systematic evaluation + findings or companion method.
-
-## Section skeleton
-
-- **§2 Task + Design Goals**: problem formulation, goals (G1 coverage, G2 fine-grained diagnostics, G3 reproducibility, G4 contamination resistance). See `references/benchmark-design.md`.
-- **§3 Construction Pipeline**: sources, generation, annotation protocol, QC, statistical profile. Figure 2 is the canonical pipeline diagram. See `references/construction-pipeline.md`.
-- **§4 Companion Method (optional)**: a specialized model whose training set is this benchmark.
-- **§5 Experiments**: organized by RQ. Include the Overall Performance table (typically the largest table in the paper), fine-grained analysis, a human baseline when available, and bolded *Finding X:* summaries. See `references/experiments.md`.
-- **§6 Discussion + Research Opportunities**: what the findings reveal and what comes next.
-- **§7 Related Work**: a benchmark comparison table (often labelled Table 1) is essential, either here or at the end of §1.
-
-The full section-by-section writing guide with page budgets and figure placement is in `references/paper-structure.md`.
-
-## Prompt template
-
-Paste the block below into your AI assistant with the input slots filled.
-
-```markdown
-# Role
-You are a senior researcher who has published multiple Benchmark papers at top venues (NeurIPS Datasets and Benchmarks Track, SIGMOD, VLDB, ICML, ICLR). You know what reviewers look for in Benchmark submissions and how those criteria differ from Technical papers.
-
-# Task
-I will give you the core information about a Benchmark or Evaluation paper. Audit it against the five-pillar framework, then produce a complete logic skeleton for the paper.
-
-# Five pillars (all must be addressed)
-1. Research Gap: which dimension of evaluation does existing work miss?
-2. Construction Pipeline: how is the data built at scale without losing quality?
-3. Evaluation Framework: what is the fine-grained taxonomy?
-4. Empirical Findings: what capability boundary does this reveal?
-5. Companion Method (optional): a specialized model tuned for this benchmark.
-
-# Input
-- Research area: [e.g., Text-to-SQL, Text-to-Visualization, code generation]
-- Benchmark name: [name]
-- Research gap and motivation: [the evaluation blind spot you target]
-- Construction approach: [how the data is built]
-- Evaluation framework: [metrics and taxonomy]
-- Data scale: [number of tasks, domains, difficulty tiers]
-- Key findings or insights: [one to three]
-
-# Output
-
-## Step 1: Five-pillar completeness table
-
-| Pillar | Covered? | Your content | Improvement suggestion |
-|---|---|---|---|
-| Research Gap | Y or N | ... | ... |
-| Construction Pipeline | Y or N | ... | ... |
-| Evaluation Framework | Y or N | ... | ... |
-| Empirical Findings | Y or N | ... | ... |
-| Companion Method | Y, N, or NA | ... | ... |
-
-## Step 2: Introduction six-part logic chain
-
-| Part | Your content |
-|---|---|
-| 1. Background + Running Example | ... |
-| 2. Existing-benchmark limitations (up to 3) | Limitation 1: ... | Limitation 2: ... | Limitation 3: ... |
-| 3. Research Questions | RQ1: ... | RQ2: ... | RQ3 (optional): ... |
-| 4. Design Considerations | ... |
-| 5. Our Proposal | ... |
-| 6. Contributions | 1. ... | 2. ... | 3. ... | 4. ... |
-
-## Step 3: Section outline for §2 to §7
-
-For each section, produce a one-paragraph sketch naming the figure or table that carries its weight.
-
-## Step 4: Pre-submission self-check
-
-Load `references/checklist.md` and walk the four-category checklist. Report any Critical or Major items that are unresolved.
-```
-
-## Reference exemplars
-
-- **StatQA (NeurIPS 2024)**: gap is evaluation of statistical-method appropriateness; pipeline is reverse synthesis from textbooks; finding is that LLMs often pick the statistically wrong test even when the numeric answer is computed correctly.
-- **nvBench 2.0 (NeurIPS 2025)**: gap is query-ambiguity blindness in Text-to-Visualization; pipeline is controlled ambiguity injection; finding is that LLM output quality swings dramatically with minor wording changes, while humans navigate via clarification dialogue.
-- **VisJudge-Bench (ICLR 2026)**: gap is the fidelity-expressiveness-aesthetics trinity in visualization quality; pipeline is expert-curated with adaptive generation; companion method is VisJudge, a specialized judge model trained on this benchmark.
-
-## Usage tips
-
-- Use early, at scope lock. The cheapest fix for a missing pillar is before data construction starts.
-- When the user's answer to a pillar is "we have this but it is messy", point them to the specific file in `references/` rather than trying to resolve it in one turn.
-- Do not confuse this Introduction flowchart with the technical-paper flowchart; they are structurally different. For technical papers, invoke `tech-paper-template`.
-- For pre-submission self-check, load `references/checklist.md` and walk it line by line with the user.
-
-## References
-
-- [`references/gap-analysis.md`](references/gap-analysis.md): systematic identification of the evaluation blind spot.
-- [`references/benchmark-design.md`](references/benchmark-design.md): design goals, task scope, taxonomy patterns, evaluation framework.
-- [`references/construction-pipeline.md`](references/construction-pipeline.md): the three construction paradigms, pipeline stages, quality control.
-- [`references/experiments.md`](references/experiments.md): baseline selection, RQ-driven analysis, *Finding X* pattern, case studies.
-- [`references/paper-structure.md`](references/paper-structure.md): section-by-section writing with page budgets and figure placement.
-- [`references/checklist.md`](references/checklist.md): four-category pre-submission checklist with severity classification.
-- [`references/instantiation-template.md`](references/instantiation-template.md): fillable template for instantiating this thinking model on your paper.
-- [`references/orchestrator-notes.md`](references/orchestrator-notes.md): historical notes from the earlier staged orchestrator architecture, kept for context.
-
-```
-
-## Figure Designer
-
-```markdown
----
-name: figure-designer
-description: >-
-  Advises on the design of the three core figures in a technical paper:
-  the Motivated Example (Figure 1), the Solution Overview
-  (Methodology), and the Experimental Results figures. Recommends the
-  right design paradigm, layout, labelling, and tool for each figure
-  type, then runs a quality-control audit. Use when the user asks to
-  'design a figure', 'draw Figure 1', 'plot experiment results',
-  'choose the right chart type', 'which figure tool to use', or
-  'figure looks unprofessional'.
-license: CC-BY-4.0
----
-
-# Figure Designer
-
-## Overview
-
-A top-venue paper typically carries six to eight figures, with three
-carrying almost all the storytelling weight: the Motivated Example
-(Figure 1, on page 1 or the top of page 2), the Solution Overview
-(inside the Methodology section), and the Experimental Results
-figures (inside the Experiments section). Reviewers scan these three
-in under a minute to decide whether the paper is worth reading in
-detail; weak figures sink otherwise-strong papers.
-
-This skill takes the user's intent (what they want to communicate)
-plus context (research area, method name, target venue) and returns
-the recommended paradigm, a layout sketch, labelling guidance,
-tool suggestion, and a quality-control audit against a universal
-rule set (vector format, font size, colour-blind-safe encoding,
-self-contained caption, honest axis ranges).
-
-## When to use this skill
-
-- Before drawing any figure in a paper.
-- The user asks to 'design a figure', 'draw Figure 1', 'plot
-  experiment results', 'choose the right chart type'.
-- The user has drawn a figure and wants a design audit.
-- The user is unsure which figure type or paradigm to choose.
-- Preparing camera-ready figures before submission.
-
-## When NOT to use this skill
-
-- The user only wants generic plotting help (bar chart, line chart)
-  outside a paper. Regular assistance suffices.
-- The paper is not yet structured; use `intro-drafter` or
-  `tech-paper-template` first to decide what figures the paper
-  needs.
-- The user wants a review of an already-finished paper. Use
-  `pre-submission-reviewer`.
-
-## Core procedure
-
-### Step 1: Figure-type identification
-
-Decide which of the three core types the figure is. If the user's
-request does not match any, either it is a supporting figure (use
-the experimental-results guidance as a base) or it does not belong
-in the paper.
-
-If the mode is `figure-audit` and the user has provided an image
-path, load the image with the Read tool **before** proceeding to
-Step 2. Vision-based inspection enables the universal rule audit
-in Step 6 to check font legibility, colour palette, raster-vs-
-vector tells, and chartjunk directly rather than relying on user
-description. If no image is provided, continue in text-only mode
-and mark vision-only rules (font size, raster detection, colour
-palette) as "user must verify" in the final audit report.
-
-### Step 2: Paradigm recommendation
-
-See: references/motivated-example.md, references/solution-overview.md,
-or references/experimental-results.md depending on figure type.
-
-Each figure type has two to three canonical paradigms. Pick the one
-that fits the user's storytelling need, and explain why the other
-paradigms fit less well.
-
-### Step 3: Layout sketch
-
-Produce a text description of the layout: panel positions, element
-placement, arrows, colour assignments. The goal is that the user
-could draw the first draft from the sketch alone.
-
-### Step 4: Labelling and annotation guidance
-
-- Name every visible element concretely (no "Module A", "X", "Y").
-- Annotate critical points (failure highlight, success highlight,
-  comparison emphasis).
-- Specify font sizes and colour palette. Default colour palette:
-  ColorBrewer Qualitative or Viridis for sequential.
-
-### Step 5: Tool suggestion
-
-See: references/tools.md for the tool matrix and the decision
-heuristic.
-
-Default recommendations:
-
-- Motivated Example and Solution Overview: PowerPoint (draft),
-  Figma (polish).
-- Experimental Results: Matplotlib or Seaborn in a reusable
-  `plot_utils.py` script.
-- LaTeX-integrated figures: TikZ or PGFPlots.
-
-### Step 6: Universal rule audit
-
-See: references/design-rules.md for the full universal rule set.
-
-Verify every proposed or existing figure against:
-
-- Vector format (PDF, EPS, SVG) for export.
-- Font size at least 8pt post-scaling.
-- Small canvas (not large canvas with small fonts).
-- Colour-blind-safe palette; no colour-only encoding.
-- Self-contained caption whose first sentence states the core
-  finding.
-- Honest axis ranges.
-- No 3D effects, no chartjunk.
-
-Flag every violation with severity.
-
-### Step 7: Integrity gate
-
-Run the checks in the Integrity gate section below.
-
-### Step 8: Output
-
-Emit the full design in the Output format below.
-
-## Integrity gate
-
-Bullets tagged [inspection] are checked by the LLM from its own
-output. Bullets tagged [user-verify] require the user to confirm
-because the check depends on either the drawn figure or knowledge
-the skill does not have (paper context, prior Introduction).
-
-Before returning the design:
-
-1. **[inspection]** Paradigm matches figure type (motivated example
-   is not a pipeline; overview is not a bar chart).
-2. **[inspection]** Layout sketch is concrete enough that the user
-   could draw from it.
-3. **[inspection]** Labels are real entity names, not placeholders.
-4. **[inspection]** Tool suggestion matches the figure's complexity
-   (not Matplotlib for a multi-icon motivated example, not
-   PowerPoint for a 20-method bar chart).
-5. **[inspection] when image provided, [user-verify] text-only**
-   Universal rule audit has been run; no CRITICAL violation is
-   left unaddressed. Vision-only rules (raster-vs-vector, font
-   size, colour palette) are only checkable when the user supplies
-   an image.
-6. **[user-verify]** For motivated examples, the example is the
-   same running example referenced by the Introduction (no new
-   example introduced in Figure 1). The skill does not see the
-   Introduction; the user confirms.
-7. **[inspection]** For experimental results, the chart type
-   matches the data type (time-series uses line, multi-method
-   comparison uses grouped bar, trade-off uses scatter).
-
-If any [inspection] check fails, mark the design as "needs user
-attention". For [user-verify] items, surface them to the user as
-items they must confirm before submission.
-
-## Output format
-
-### 1. Figure type
-- Type: <motivated-example or solution-overview or experimental-results>
-- Reason: <one sentence>
-
-### 2. Paradigm recommendation
-- Paradigm: <name>
-- Why this paradigm: <rationale>
-- Alternatives considered and rejected: <list>
-
-### 3. Layout sketch
-- Canvas: <size>
-- Panels: <list with positions and contents>
-- Arrows and connections: <list>
-- Colour assignment: <mapping>
-
-### 4. Labelling and annotations
-- Element names: <list>
-- Critical highlights: <list>
-- Font sizes: <target>
-- Colour palette: <name>
-
-### 5. Tool suggestion
-- Primary: <tool>
-- Alternative: <tool>
-- Reason: <rationale>
-
-### 6. Universal rule audit
-- [ ] Vector format: <pass or fail>
-- [ ] Font size: <pass or fail>
-- [ ] Colour-blind safe: <pass or fail>
-- [ ] Self-contained caption: <pass or fail>
-- [ ] Honest axis range (if applicable): <pass or fail>
-- [ ] No chartjunk: <pass or fail>
-
-### 7. Integrity gate result
-- Gate 1-7: <pass or fail>
-
-### 8. Severity summary
-- <n> CRITICAL, <m> MAJOR, <k> MINOR
-- Top three actions first: ...
-
-```
+### 想法评估
 
 ## Idea Evaluator
 
@@ -636,6 +275,208 @@ Top three actions to take first:
 
 ```
 
+### 论文框架
+
+## Tech Paper Template
+
+```markdown
+---
+name: tech-paper-template
+description: >-
+  Structures a technical paper's full logical skeleton using a
+  thinking-template table (research background, limitations, key idea
+  or goal, challenges, methodology modules, contributions), positions
+  the paper as Technique or New Problem/Setting, and runs a four-point
+  self-consistency check. Use when the user is brainstorming a paper,
+  discussing progress with an advisor, or planning the paper before
+  drafting. Also use for 'paper skeleton', 'paper logic chain',
+  'thinking template', 'paper-structure planning'.
+license: CC-BY-4.0
+---
+
+# Tech Paper Template
+
+## Overview
+
+Before drafting any prose, a technical paper needs a full logical
+skeleton: the research background, the specific limitations of prior
+work, the key idea or research goal, the technical challenges that
+prevent a naive solution, the methodology modules that address each
+challenge, and the contributions that the paper will claim. This
+skill fills in that skeleton via a standardised thinking-template
+table, positions the paper type, and runs four self-consistency
+checks on the logic chain.
+
+The output is a filled-in thinking template plus a consistency
+report. It is suitable for advisor-student brainstorming sessions,
+weekly progress meetings, and the final planning step before writing
+begins. It does not draft Introduction prose (use `intro-drafter` for
+that); it operates at the logical-skeleton layer.
+
+## When to use this skill
+
+- Early brainstorming of a paper project.
+- Weekly progress meeting with an advisor or collaborator.
+- Pre-drafting planning after `idea-evaluator` returns Strong Accept.
+- The paper's logic chain feels incoherent and needs an audit.
+- The user asks for 'paper skeleton', 'paper logic chain', 'thinking
+  template', or 'paper-structure planning'.
+- The user is unsure whether their paper is Technique or New
+  Problem/Setting.
+
+## When NOT to use this skill
+
+- The paper is a benchmark paper. Use `benchmark-paper-template` (separate plugin).
+- The user needs an Introduction-specific paragraph outline. Use
+  `intro-drafter` (typically run this skill first, then
+  `intro-drafter`).
+- The user has a written draft and wants review feedback. Use
+  `pre-submission-reviewer`.
+- The idea itself is not yet vetted. Use `idea-evaluator` first.
+
+## Core procedure
+
+### Step 1: Paper-type positioning
+
+See: references/paper-types.md for the positioning criteria and
+worked examples.
+
+Decide Technique versus New Problem/Setting. In Technique, the Key
+Idea carries the narrative and Our Goal is a short bridge. In New
+Problem/Setting, Our Goal is the contribution and the Key Idea
+justifies feasibility.
+
+If the user's inputs describe a benchmark, stop and redirect to
+`benchmark-paper-template` (separate plugin).
+
+### Step 2: Fill the thinking template
+
+See: references/thinking-template.md for each template cell's content
+contract, what a strong cell looks like, and common failure modes.
+
+Fill the seven cells:
+
+1. Research background. Scenario, importance, motivation.
+2. Limitations 1 through 3 (2 is acceptable; more than 3 is not).
+3. Key idea or Our Goal. One sentence.
+4. Challenges 1 through 3 (similar cap).
+5. Methodology modules. One module per challenge.
+6. Contributions (3 or 4, each mapped to a section).
+
+If a cell is incomplete given the user's inputs, mark it as a gap
+with severity.
+
+### Step 3: Run four self-consistency checks
+
+See: references/consistency-checks.md for the detailed checking
+procedure and examples of chain breaks.
+
+Run each check:
+
+1. **Limitations to Key Idea**: does the Key Idea or Goal address
+   the stated Limitations? If not, either the Limitations are
+   wrong or the Key Idea is misaligned.
+2. **Key Idea to Challenges**: do the Challenges arise naturally
+   from implementing the Key Idea? If not, the challenges are
+   invented to justify modules rather than derived from the idea.
+3. **Challenges to Methodology**: does each methodology module
+   address one challenge? If not, there is a module without
+   justification or a challenge without a fix.
+4. **Methodology to Contributions**: do the contributions cover
+   each module or experimental result? If not, contributions are
+   vague or promising more than the paper delivers.
+
+Every failure is CRITICAL.
+
+### Step 4: Generate methodology outline
+
+See: references/thinking-template.md for the methodology-outline
+template.
+
+From the challenges, derive a methodology outline: topic sentence,
+per-module subsection names, and per-module one-sentence summary.
+This becomes the skeleton for Section 3 or 4 of the paper.
+
+### Step 5: Integrity gate
+
+Before emitting, run the checks in the Integrity gate section
+below.
+
+### Step 6: Output
+
+Emit the filled template plus the consistency report in the
+Output format below.
+
+## Integrity gate
+
+All seven bullets are **[inspection]** class: the LLM verifies each
+directly from the filled template (counting, pattern-matching, or
+comparing cells). No user-side attestation required.
+
+Before returning the filled template:
+
+1. **[inspection]** Paper-type positioning is consistent with the
+   user's actual contribution (Technique paper not shoehorned into
+   New Problem framing, or vice versa).
+2. **[inspection]** Limitations are specific and cited-able, not
+   vague.
+3. **[inspection]** Key Idea or Goal is a single sentence a
+   reviewer could quote.
+4. **[inspection]** Challenges derive from implementing the Key
+   Idea; they are not invented.
+5. **[inspection]** Methodology modules have one-to-one mapping
+   with challenges.
+6. **[inspection]** Contributions map to methodology modules and
+   to specific sections.
+7. **[inspection]** All four self-consistency checks pass.
+
+If any check fails, mark the skeleton as "needs user attention".
+
+## Output format
+
+### 1. Paper-type positioning
+- Type: <Technique Paper or New Problem/Setting Paper>
+- Rationale: <one sentence>
+
+### 2. Thinking template
+
+| Stage | Your content |
+|---|---|
+| Research background | ... |
+| Limitation 1 | ... |
+| Limitation 2 | ... |
+| Limitation 3 (if applicable) | ... |
+| Key Idea / Our Goal | ... |
+| Challenge 1 | ... |
+| Challenge 2 | ... |
+| Challenge 3 (if applicable) | ... |
+| Methodology topic sentence | ... |
+| Module A (addresses Challenge 1) | ... |
+| Module B (addresses Challenge 2) | ... |
+| Module C (addresses Challenge 3) | ... |
+| Contribution 1 | ... (Section <X>) |
+| Contribution 2 | ... (Section <Y>) |
+| Contribution 3 | ... (Section <Z>) |
+
+### 3. Self-consistency checks
+- Check 1 Limitations -> Key Idea: <pass or fail>
+- Check 2 Key Idea -> Challenges: <pass or fail>
+- Check 3 Challenges -> Methodology: <pass or fail>
+- Check 4 Methodology -> Contributions: <pass or fail>
+
+### 4. Severity summary
+- <n> CRITICAL, <m> MAJOR, <k> MINOR.
+- Top three fixes first: ...
+
+### 5. Next suggested skill
+- If all checks pass: `intro-drafter` to produce the Introduction
+  paragraph outline.
+- If checks fail: address the flagged chain breaks first.
+
+```
+
+### Introduction 写作
+
 ## Introduction Drafter
 
 ```markdown
@@ -892,6 +733,223 @@ and do not claim the outline is complete.
 
 ```
 
+### 图表设计
+
+## Figure Designer
+
+```markdown
+---
+name: figure-designer
+description: >-
+  Advises on the design of the three core figures in a technical paper:
+  the Motivated Example (Figure 1), the Solution Overview
+  (Methodology), and the Experimental Results figures. Recommends the
+  right design paradigm, layout, labelling, and tool for each figure
+  type, then runs a quality-control audit. Use when the user asks to
+  'design a figure', 'draw Figure 1', 'plot experiment results',
+  'choose the right chart type', 'which figure tool to use', or
+  'figure looks unprofessional'.
+license: CC-BY-4.0
+---
+
+# Figure Designer
+
+## Overview
+
+A top-venue paper typically carries six to eight figures, with three
+carrying almost all the storytelling weight: the Motivated Example
+(Figure 1, on page 1 or the top of page 2), the Solution Overview
+(inside the Methodology section), and the Experimental Results
+figures (inside the Experiments section). Reviewers scan these three
+in under a minute to decide whether the paper is worth reading in
+detail; weak figures sink otherwise-strong papers.
+
+This skill takes the user's intent (what they want to communicate)
+plus context (research area, method name, target venue) and returns
+the recommended paradigm, a layout sketch, labelling guidance,
+tool suggestion, and a quality-control audit against a universal
+rule set (vector format, font size, colour-blind-safe encoding,
+self-contained caption, honest axis ranges).
+
+## When to use this skill
+
+- Before drawing any figure in a paper.
+- The user asks to 'design a figure', 'draw Figure 1', 'plot
+  experiment results', 'choose the right chart type'.
+- The user has drawn a figure and wants a design audit.
+- The user is unsure which figure type or paradigm to choose.
+- Preparing camera-ready figures before submission.
+
+## When NOT to use this skill
+
+- The user only wants generic plotting help (bar chart, line chart)
+  outside a paper. Regular assistance suffices.
+- The paper is not yet structured; use `intro-drafter` or
+  `tech-paper-template` first to decide what figures the paper
+  needs.
+- The user wants a review of an already-finished paper. Use
+  `pre-submission-reviewer`.
+
+## Core procedure
+
+### Step 1: Figure-type identification
+
+Decide which of the three core types the figure is. If the user's
+request does not match any, either it is a supporting figure (use
+the experimental-results guidance as a base) or it does not belong
+in the paper.
+
+If the mode is `figure-audit` and the user has provided an image
+path, load the image with the Read tool **before** proceeding to
+Step 2. Vision-based inspection enables the universal rule audit
+in Step 6 to check font legibility, colour palette, raster-vs-
+vector tells, and chartjunk directly rather than relying on user
+description. If no image is provided, continue in text-only mode
+and mark vision-only rules (font size, raster detection, colour
+palette) as "user must verify" in the final audit report.
+
+### Step 2: Paradigm recommendation
+
+See: references/motivated-example.md, references/solution-overview.md,
+or references/experimental-results.md depending on figure type.
+
+Each figure type has two to three canonical paradigms. Pick the one
+that fits the user's storytelling need, and explain why the other
+paradigms fit less well.
+
+### Step 3: Layout sketch
+
+Produce a text description of the layout: panel positions, element
+placement, arrows, colour assignments. The goal is that the user
+could draw the first draft from the sketch alone.
+
+### Step 4: Labelling and annotation guidance
+
+- Name every visible element concretely (no "Module A", "X", "Y").
+- Annotate critical points (failure highlight, success highlight,
+  comparison emphasis).
+- Specify font sizes and colour palette. Default colour palette:
+  ColorBrewer Qualitative or Viridis for sequential.
+
+### Step 5: Tool suggestion
+
+See: references/tools.md for the tool matrix and the decision
+heuristic.
+
+Default recommendations:
+
+- Motivated Example and Solution Overview: PowerPoint (draft),
+  Figma (polish).
+- Experimental Results: Matplotlib or Seaborn in a reusable
+  `plot_utils.py` script.
+- LaTeX-integrated figures: TikZ or PGFPlots.
+
+### Step 6: Universal rule audit
+
+See: references/design-rules.md for the full universal rule set.
+
+Verify every proposed or existing figure against:
+
+- Vector format (PDF, EPS, SVG) for export.
+- Font size at least 8pt post-scaling.
+- Small canvas (not large canvas with small fonts).
+- Colour-blind-safe palette; no colour-only encoding.
+- Self-contained caption whose first sentence states the core
+  finding.
+- Honest axis ranges.
+- No 3D effects, no chartjunk.
+
+Flag every violation with severity.
+
+### Step 7: Integrity gate
+
+Run the checks in the Integrity gate section below.
+
+### Step 8: Output
+
+Emit the full design in the Output format below.
+
+## Integrity gate
+
+Bullets tagged [inspection] are checked by the LLM from its own
+output. Bullets tagged [user-verify] require the user to confirm
+because the check depends on either the drawn figure or knowledge
+the skill does not have (paper context, prior Introduction).
+
+Before returning the design:
+
+1. **[inspection]** Paradigm matches figure type (motivated example
+   is not a pipeline; overview is not a bar chart).
+2. **[inspection]** Layout sketch is concrete enough that the user
+   could draw from it.
+3. **[inspection]** Labels are real entity names, not placeholders.
+4. **[inspection]** Tool suggestion matches the figure's complexity
+   (not Matplotlib for a multi-icon motivated example, not
+   PowerPoint for a 20-method bar chart).
+5. **[inspection] when image provided, [user-verify] text-only**
+   Universal rule audit has been run; no CRITICAL violation is
+   left unaddressed. Vision-only rules (raster-vs-vector, font
+   size, colour palette) are only checkable when the user supplies
+   an image.
+6. **[user-verify]** For motivated examples, the example is the
+   same running example referenced by the Introduction (no new
+   example introduced in Figure 1). The skill does not see the
+   Introduction; the user confirms.
+7. **[inspection]** For experimental results, the chart type
+   matches the data type (time-series uses line, multi-method
+   comparison uses grouped bar, trade-off uses scatter).
+
+If any [inspection] check fails, mark the design as "needs user
+attention". For [user-verify] items, surface them to the user as
+items they must confirm before submission.
+
+## Output format
+
+### 1. Figure type
+- Type: <motivated-example or solution-overview or experimental-results>
+- Reason: <one sentence>
+
+### 2. Paradigm recommendation
+- Paradigm: <name>
+- Why this paradigm: <rationale>
+- Alternatives considered and rejected: <list>
+
+### 3. Layout sketch
+- Canvas: <size>
+- Panels: <list with positions and contents>
+- Arrows and connections: <list>
+- Colour assignment: <mapping>
+
+### 4. Labelling and annotations
+- Element names: <list>
+- Critical highlights: <list>
+- Font sizes: <target>
+- Colour palette: <name>
+
+### 5. Tool suggestion
+- Primary: <tool>
+- Alternative: <tool>
+- Reason: <rationale>
+
+### 6. Universal rule audit
+- [ ] Vector format: <pass or fail>
+- [ ] Font size: <pass or fail>
+- [ ] Colour-blind safe: <pass or fail>
+- [ ] Self-contained caption: <pass or fail>
+- [ ] Honest axis range (if applicable): <pass or fail>
+- [ ] No chartjunk: <pass or fail>
+
+### 7. Integrity gate result
+- Gate 1-7: <pass or fail>
+
+### 8. Severity summary
+- <n> CRITICAL, <m> MAJOR, <k> MINOR
+- Top three actions first: ...
+
+```
+
+### 投稿审查
+
 ## Pre-Submission Reviewer
 
 ```markdown
@@ -1145,203 +1203,157 @@ of its scan and the user confirms completeness.
 
 ```
 
-## Tech Paper Template
+### Benchmark 论文
+
+## Benchmark Paper Template
 
 ```markdown
 ---
-name: tech-paper-template
-description: >-
-  Structures a technical paper's full logical skeleton using a
-  thinking-template table (research background, limitations, key idea
-  or goal, challenges, methodology modules, contributions), positions
-  the paper as Technique or New Problem/Setting, and runs a four-point
-  self-consistency check. Use when the user is brainstorming a paper,
-  discussing progress with an advisor, or planning the paper before
-  drafting. Also use for 'paper skeleton', 'paper logic chain',
-  'thinking template', 'paper-structure planning'.
+name: benchmark-paper-template
+description: Structures Benchmark and Evaluation papers using the five-pillar framework (Research Gap, Construction Pipeline, Evaluation Framework, Empirical Findings, optional Companion Method). Returns a completeness audit, a six-part Introduction logic chain, a Section 2-7 skeleton, and a pre-submission checklist. Use when writing a benchmark paper, structuring a benchmark paper, checking whether a benchmark idea is substantive, drafting a benchmark Introduction, or planning the data-construction pipeline or experiments.
 license: CC-BY-4.0
 ---
 
-# Tech Paper Template
+# Benchmark Paper Template
 
 ## Overview
 
-Before drafting any prose, a technical paper needs a full logical
-skeleton: the research background, the specific limitations of prior
-work, the key idea or research goal, the technical challenges that
-prevent a naive solution, the methodology modules that address each
-challenge, and the contributions that the paper will claim. This
-skill fills in that skeleton via a standardised thinking-template
-table, positions the paper type, and runs four self-consistency
-checks on the logic chain.
+A Benchmark paper does not win by proposing a new algorithm. It wins by defining a new evaluation dimension and shipping a construction pipeline that makes the measurement high-quality, scalable, and reproducible. This skill scaffolds the five pillars a reviewer checks, then gives you a six-part Introduction chain, a Section 2-7 skeleton, and a pre-submission checklist. Stage-specific depth lives in seven reference files under `references/`.
 
-The output is a filled-in thinking template plus a consistency
-report. It is suitable for advisor-student brainstorming sessions,
-weekly progress meetings, and the final planning step before writing
-begins. It does not draft Introduction prose (use `intro-drafter` for
-that); it operates at the logical-skeleton layer.
+## Core capabilities
 
-## When to use this skill
+1. **Five-pillar completeness audit**: is the Research Gap articulated? Is the Construction Pipeline principled? Is the Evaluation Framework fine-grained? Do the Empirical Findings reveal capability boundaries? Is a Companion Method warranted?
+2. **Introduction six-part logic chain**: Background + Running Example, Existing-Benchmark Limitations (no more than three), Research Questions, Design Considerations, Our Proposal, Contributions.
+3. **Section skeleton for §2 to §7**: Task and Design Goals, Construction Pipeline, Optional Companion Method, Experiments organized by RQ, Discussion and Research Opportunities, Related Work with benchmark comparison table, Conclusion.
+4. **Pre-submission self-check**: four-category reviewer checklist (Introduction, Benchmark section, Experiments, Overall) with Critical, Major, Minor severity.
 
-- Early brainstorming of a paper project.
-- Weekly progress meeting with an advisor or collaborator.
-- Pre-drafting planning after `idea-evaluator` returns Strong Accept.
-- The paper's logic chain feels incoherent and needs an audit.
-- The user asks for 'paper skeleton', 'paper logic chain', 'thinking
-  template', or 'paper-structure planning'.
-- The user is unsure whether their paper is Technique or New
-  Problem/Setting.
+## Benchmark paper vs technical paper
 
-## When NOT to use this skill
+| Dimension | Technical paper | Benchmark paper |
+|---|---|---|
+| Main contribution | Novel algorithm or method | Novel evaluation dimension or dataset |
+| Introduction axis | Key Idea or Mechanism | Evaluation Gap and Benchmark Design Rationale |
+| Problem definition | One-sentence goal | The problem definition IS the contribution |
+| Heaviest chapter | Method | Construction Pipeline + Evaluation Framework |
+| Experiments purpose | Prove "my method beats baselines" | Reveal "where model capability boundaries sit" |
+| Canonical Figure 1 | Method framework diagram | Running example + pipeline diagram |
 
-- The paper is a benchmark paper. Use `benchmark-paper-template` (separate plugin).
-- The user needs an Introduction-specific paragraph outline. Use
-  `intro-drafter` (typically run this skill first, then
-  `intro-drafter`).
-- The user has a written draft and wants review feedback. Use
-  `pre-submission-reviewer`.
-- The idea itself is not yet vetted. Use `idea-evaluator` first.
+For technical and position papers, use the `tech-paper-template` skill. For the Introduction outline in isolation, use `intro-drafter`.
 
-## Core procedure
+## The five pillars
 
-### Step 1: Paper-type positioning
+1. **Research Gap**. What dimension of evaluation does existing work miss? Ground the gap in a concrete failure case and cite at least three prior benchmarks whose limitations you are addressing (no more than three). Exemplars: StatQA highlights missing statistical-method appropriateness; nvBench 2.0 highlights query-ambiguity blindness; VisJudge-Bench highlights the fidelity-expressiveness-aesthetics trinity in visualization evaluation.
+2. **Construction Pipeline**. How do you build high-quality, scalable, reproducible data? Three common paradigms: Reverse Synthesis (seed knowledge then instantiate), Controlled Injection (seed queries then inject targeted ambiguity or error), Adaptive Generation with Expert Validation. Specify source selection, generation, annotation, quality control, split strategy, and statistical profile. Deep dive: `references/construction-pipeline.md`.
+3. **Evaluation Framework**. Beyond a single overall score: difficulty tiers, error taxonomy, per-dimension rubrics. Explain why this taxonomy diagnoses what the gap pointed at. Deep dive: `references/benchmark-design.md`.
+4. **Empirical Findings**. Multi-angle comparisons (Human vs LLM, architecture families, error distributions) condensed into bolded *Finding X:* sentences that read like lemmas. Each Finding must be actionable for future research. Deep dive: `references/experiments.md`.
+5. **Companion Method (optional)**. A specialized model tuned for this benchmark signals that the community can act on the findings. Examples: Step-Text2Vis, VisJudge. Not mandatory, but strongly recommended for benchmarks targeting mature tasks.
 
-See: references/paper-types.md for the positioning criteria and
-worked examples.
+## Introduction six-part flowchart
 
-Decide Technique versus New Problem/Setting. In Technique, the Key
-Idea carries the narrative and Our Goal is a short bridge. In New
-Problem/Setting, Our Goal is the contribution and the Key Idea
-justifies feasibility.
+1. **Research Background + Running Example (Figure 1)**. Establish the task, why it matters, and one concrete example that threads through the entire paper.
+2. **Existing-Benchmark Limitations**. At most three, each specific and traceable to an evaluation blind spot. Avoid vague "is limited" phrasing.
+3. **Research Questions**. Two or three RQs covering construction quality, capability boundaries, and the human-AI gap.
+4. **Design Considerations**. What should a good benchmark for this dimension have? Quality, scale, coverage, reproducibility, contamination resistance.
+5. **Our Proposal**. One paragraph: the benchmark plus the companion method if any.
+6. **Contributions**. Typically four items: benchmark + pipeline innovation + systematic evaluation + findings or companion method.
 
-If the user's inputs describe a benchmark, stop and redirect to
-`benchmark-paper-template` (separate plugin).
+## Section skeleton
 
-### Step 2: Fill the thinking template
+- **§2 Task + Design Goals**: problem formulation, goals (G1 coverage, G2 fine-grained diagnostics, G3 reproducibility, G4 contamination resistance). See `references/benchmark-design.md`.
+- **§3 Construction Pipeline**: sources, generation, annotation protocol, QC, statistical profile. Figure 2 is the canonical pipeline diagram. See `references/construction-pipeline.md`.
+- **§4 Companion Method (optional)**: a specialized model whose training set is this benchmark.
+- **§5 Experiments**: organized by RQ. Include the Overall Performance table (typically the largest table in the paper), fine-grained analysis, a human baseline when available, and bolded *Finding X:* summaries. See `references/experiments.md`.
+- **§6 Discussion + Research Opportunities**: what the findings reveal and what comes next.
+- **§7 Related Work**: a benchmark comparison table (often labelled Table 1) is essential, either here or at the end of §1.
 
-See: references/thinking-template.md for each template cell's content
-contract, what a strong cell looks like, and common failure modes.
+The full section-by-section writing guide with page budgets and figure placement is in `references/paper-structure.md`.
 
-Fill the seven cells:
+## Prompt template
 
-1. Research background. Scenario, importance, motivation.
-2. Limitations 1 through 3 (2 is acceptable; more than 3 is not).
-3. Key idea or Our Goal. One sentence.
-4. Challenges 1 through 3 (similar cap).
-5. Methodology modules. One module per challenge.
-6. Contributions (3 or 4, each mapped to a section).
+Paste the block below into your AI assistant with the input slots filled.
 
-If a cell is incomplete given the user's inputs, mark it as a gap
-with severity.
+```markdown
+# Role
+You are a senior researcher who has published multiple Benchmark papers at top venues (NeurIPS Datasets and Benchmarks Track, SIGMOD, VLDB, ICML, ICLR). You know what reviewers look for in Benchmark submissions and how those criteria differ from Technical papers.
 
-### Step 3: Run four self-consistency checks
+# Task
+I will give you the core information about a Benchmark or Evaluation paper. Audit it against the five-pillar framework, then produce a complete logic skeleton for the paper.
 
-See: references/consistency-checks.md for the detailed checking
-procedure and examples of chain breaks.
+# Five pillars (all must be addressed)
+1. Research Gap: which dimension of evaluation does existing work miss?
+2. Construction Pipeline: how is the data built at scale without losing quality?
+3. Evaluation Framework: what is the fine-grained taxonomy?
+4. Empirical Findings: what capability boundary does this reveal?
+5. Companion Method (optional): a specialized model tuned for this benchmark.
 
-Run each check:
+# Input
+- Research area: [e.g., Text-to-SQL, Text-to-Visualization, code generation]
+- Benchmark name: [name]
+- Research gap and motivation: [the evaluation blind spot you target]
+- Construction approach: [how the data is built]
+- Evaluation framework: [metrics and taxonomy]
+- Data scale: [number of tasks, domains, difficulty tiers]
+- Key findings or insights: [one to three]
 
-1. **Limitations to Key Idea**: does the Key Idea or Goal address
-   the stated Limitations? If not, either the Limitations are
-   wrong or the Key Idea is misaligned.
-2. **Key Idea to Challenges**: do the Challenges arise naturally
-   from implementing the Key Idea? If not, the challenges are
-   invented to justify modules rather than derived from the idea.
-3. **Challenges to Methodology**: does each methodology module
-   address one challenge? If not, there is a module without
-   justification or a challenge without a fix.
-4. **Methodology to Contributions**: do the contributions cover
-   each module or experimental result? If not, contributions are
-   vague or promising more than the paper delivers.
+# Output
 
-Every failure is CRITICAL.
+## Step 1: Five-pillar completeness table
 
-### Step 4: Generate methodology outline
+| Pillar | Covered? | Your content | Improvement suggestion |
+|---|---|---|---|
+| Research Gap | Y or N | ... | ... |
+| Construction Pipeline | Y or N | ... | ... |
+| Evaluation Framework | Y or N | ... | ... |
+| Empirical Findings | Y or N | ... | ... |
+| Companion Method | Y, N, or NA | ... | ... |
 
-See: references/thinking-template.md for the methodology-outline
-template.
+## Step 2: Introduction six-part logic chain
 
-From the challenges, derive a methodology outline: topic sentence,
-per-module subsection names, and per-module one-sentence summary.
-This becomes the skeleton for Section 3 or 4 of the paper.
-
-### Step 5: Integrity gate
-
-Before emitting, run the checks in the Integrity gate section
-below.
-
-### Step 6: Output
-
-Emit the filled template plus the consistency report in the
-Output format below.
-
-## Integrity gate
-
-All seven bullets are **[inspection]** class: the LLM verifies each
-directly from the filled template (counting, pattern-matching, or
-comparing cells). No user-side attestation required.
-
-Before returning the filled template:
-
-1. **[inspection]** Paper-type positioning is consistent with the
-   user's actual contribution (Technique paper not shoehorned into
-   New Problem framing, or vice versa).
-2. **[inspection]** Limitations are specific and cited-able, not
-   vague.
-3. **[inspection]** Key Idea or Goal is a single sentence a
-   reviewer could quote.
-4. **[inspection]** Challenges derive from implementing the Key
-   Idea; they are not invented.
-5. **[inspection]** Methodology modules have one-to-one mapping
-   with challenges.
-6. **[inspection]** Contributions map to methodology modules and
-   to specific sections.
-7. **[inspection]** All four self-consistency checks pass.
-
-If any check fails, mark the skeleton as "needs user attention".
-
-## Output format
-
-### 1. Paper-type positioning
-- Type: <Technique Paper or New Problem/Setting Paper>
-- Rationale: <one sentence>
-
-### 2. Thinking template
-
-| Stage | Your content |
+| Part | Your content |
 |---|---|
-| Research background | ... |
-| Limitation 1 | ... |
-| Limitation 2 | ... |
-| Limitation 3 (if applicable) | ... |
-| Key Idea / Our Goal | ... |
-| Challenge 1 | ... |
-| Challenge 2 | ... |
-| Challenge 3 (if applicable) | ... |
-| Methodology topic sentence | ... |
-| Module A (addresses Challenge 1) | ... |
-| Module B (addresses Challenge 2) | ... |
-| Module C (addresses Challenge 3) | ... |
-| Contribution 1 | ... (Section <X>) |
-| Contribution 2 | ... (Section <Y>) |
-| Contribution 3 | ... (Section <Z>) |
+| 1. Background + Running Example | ... |
+| 2. Existing-benchmark limitations (up to 3) | Limitation 1: ... | Limitation 2: ... | Limitation 3: ... |
+| 3. Research Questions | RQ1: ... | RQ2: ... | RQ3 (optional): ... |
+| 4. Design Considerations | ... |
+| 5. Our Proposal | ... |
+| 6. Contributions | 1. ... | 2. ... | 3. ... | 4. ... |
 
-### 3. Self-consistency checks
-- Check 1 Limitations -> Key Idea: <pass or fail>
-- Check 2 Key Idea -> Challenges: <pass or fail>
-- Check 3 Challenges -> Methodology: <pass or fail>
-- Check 4 Methodology -> Contributions: <pass or fail>
+## Step 3: Section outline for §2 to §7
 
-### 4. Severity summary
-- <n> CRITICAL, <m> MAJOR, <k> MINOR.
-- Top three fixes first: ...
+For each section, produce a one-paragraph sketch naming the figure or table that carries its weight.
 
-### 5. Next suggested skill
-- If all checks pass: `intro-drafter` to produce the Introduction
-  paragraph outline.
-- If checks fail: address the flagged chain breaks first.
+## Step 4: Pre-submission self-check
+
+Load `references/checklist.md` and walk the four-category checklist. Report any Critical or Major items that are unresolved.
+```
+
+## Reference exemplars
+
+- **StatQA (NeurIPS 2024)**: gap is evaluation of statistical-method appropriateness; pipeline is reverse synthesis from textbooks; finding is that LLMs often pick the statistically wrong test even when the numeric answer is computed correctly.
+- **nvBench 2.0 (NeurIPS 2025)**: gap is query-ambiguity blindness in Text-to-Visualization; pipeline is controlled ambiguity injection; finding is that LLM output quality swings dramatically with minor wording changes, while humans navigate via clarification dialogue.
+- **VisJudge-Bench (ICLR 2026)**: gap is the fidelity-expressiveness-aesthetics trinity in visualization quality; pipeline is expert-curated with adaptive generation; companion method is VisJudge, a specialized judge model trained on this benchmark.
+
+## Usage tips
+
+- Use early, at scope lock. The cheapest fix for a missing pillar is before data construction starts.
+- When the user's answer to a pillar is "we have this but it is messy", point them to the specific file in `references/` rather than trying to resolve it in one turn.
+- Do not confuse this Introduction flowchart with the technical-paper flowchart; they are structurally different. For technical papers, invoke `tech-paper-template`.
+- For pre-submission self-check, load `references/checklist.md` and walk it line by line with the user.
+
+## References
+
+- [`references/gap-analysis.md`](references/gap-analysis.md): systematic identification of the evaluation blind spot.
+- [`references/benchmark-design.md`](references/benchmark-design.md): design goals, task scope, taxonomy patterns, evaluation framework.
+- [`references/construction-pipeline.md`](references/construction-pipeline.md): the three construction paradigms, pipeline stages, quality control.
+- [`references/experiments.md`](references/experiments.md): baseline selection, RQ-driven analysis, *Finding X* pattern, case studies.
+- [`references/paper-structure.md`](references/paper-structure.md): section-by-section writing with page budgets and figure placement.
+- [`references/checklist.md`](references/checklist.md): four-category pre-submission checklist with severity classification.
+- [`references/instantiation-template.md`](references/instantiation-template.md): fillable template for instantiating this thinking model on your paper.
+- [`references/orchestrator-notes.md`](references/orchestrator-notes.md): historical notes from the earlier staged orchestrator architecture, kept for context.
 
 ```
+
+### AI 协作
 
 ## Vibe Research Workflow
 
@@ -1538,7 +1550,6 @@ block.
 
 ```
 
----
 
 # Part II: 说明
 

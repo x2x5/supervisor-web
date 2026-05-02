@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>顶会写作技能</title>
+    <title>Lyy博导技能</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -13,12 +13,10 @@
       <header class="hero">
         <div class="hero-head">
           <div class="hero-title-wrap">
-            <h1>顶会写作技能</h1>
-            <span class="hero-tip">支持拖动排序</span>
+            <h1>Lyy博导技能</h1>
           </div>
           <div class="hero-actions">
             <button id="openAddBtn" class="open-add-btn" type="button">+ 新增卡片</button>
-            <button id="toggleUsageSortBtn" class="reset-usage-btn" type="button">按次数排序</button>
             <button id="resetUsageBtn" class="reset-usage-btn" type="button">次数清零</button>
           </div>
         </div>
@@ -30,29 +28,20 @@
         <input id="manualFile" type="file" accept=".md,text/markdown" class="hidden" />
       </section>
 
-      <section class="zone common-zone" aria-label="主力卡片区">
-        <section id="commonRoot" class="cards" aria-label="主力卡片列表"></section>
-      </section>
-
-      <details id="poolPanel" class="zone pool-zone">
-        <summary>
-          <span>替补卡片</span>
-        </summary>
-        <section id="poolRoot" class="cards" aria-label="替补卡片列表"></section>
-      </details>
+      <section id="phasesRoot" aria-label="科研阶段"></section>
 
       <details id="trashPanel" class="zone trash-zone">
         <summary>
           <span>垃圾卡片</span>
           <button id="clearTrashBtn" class="clear-trash-btn" type="button">清空垃圾</button>
         </summary>
-        <section id="trashRoot" class="cards" aria-label="垃圾卡片列表"></section>
+        <section id="trashRoot" class="cards-trash" aria-label="垃圾卡片列表"></section>
       </details>
 
       <footer class="page-footer">
-        <span>skills 使用这个项目：</span>
-        <a href="https://github.com/Leey21/awesome-ai-research-writing" target="_blank" rel="noopener noreferrer">
-          awesome-ai-research-writing
+        <span>参考项目：</span>
+        <a href="https://github.com/HKUSTDial/Supervisor-Skills" target="_blank" rel="noopener noreferrer">
+          HKUSTDial/Supervisor-Skills
         </a>
       </footer>
     </main>
@@ -115,8 +104,11 @@
         <textarea class="card-input" placeholder="把要处理的内容贴在这里..."></textarea>
         <div class="card-actions">
           <button class="copy-btn" type="button">复制全部</button>
-          <button class="toggle-btn" type="button"></button>
+          <button class="phase-select-btn" type="button">移至…</button>
         </div>
+        <menu class="phase-menu hidden">
+          <li><button class="phase-option" type="button" data-phase="__ungrouped__">未分类</button></li>
+        </menu>
         <section class="edit-panel hidden">
           <label>
             标题

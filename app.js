@@ -167,10 +167,12 @@ const UI_TEXT = {
     heroTitle: "骆昱宇博导技能",
     addCard: "+ 新增卡片",
     resetUsage: "次数清零",
+    poolLabel: "替补卡片",
     trashLabel: "垃圾卡片",
     clearTrash: "清空垃圾",
     copyAll: "复制全部",
-    moveTo: "移至…",
+    benchOut: "移到替补",
+    benchIn: "加入主力",
     restore: "恢复",
     viewTemplate: "查看模板",
     usageCount: (n) => `使用 ${n} 次`,
@@ -197,10 +199,12 @@ const UI_TEXT = {
     heroTitle: "LYY Supervisor Skills",
     addCard: "+ New Card",
     resetUsage: "Reset Count",
+    poolLabel: "Bench",
     trashLabel: "Trash",
     clearTrash: "Clear Trash",
     copyAll: "Copy All",
-    moveTo: "Move to…",
+    benchOut: "Bench",
+    benchIn: "Promote",
     restore: "Restore",
     viewTemplate: "View Template",
     usageCount: (n) => `Used ${n} times`,
@@ -269,6 +273,9 @@ const noticeText = document.getElementById("noticeText");
 const manualFile = document.getElementById("manualFile");
 const manualLoadBtn = document.querySelector(".manual-load-btn");
 const trashPanel = document.getElementById("trashPanel");
+const poolPanel = document.getElementById("poolPanel");
+const poolRoot = document.getElementById("poolRoot");
+const poolCount = document.getElementById("poolCount");
 const langToggleBtn = document.getElementById("langToggleBtn");
 
 let baseItems = [];
@@ -298,7 +305,9 @@ function updateUIText() {
   if (h1) h1.textContent = t("heroTitle");
   if (openAddBtn) openAddBtn.textContent = t("addCard");
   if (resetUsageBtn) resetUsageBtn.textContent = t("resetUsage");
-  // Trash
+  // Pool & Trash
+  const poolSummary = document.querySelector("#poolPanel > summary span");
+  if (poolSummary) poolSummary.textContent = t("poolLabel");
   const trashSummary = document.querySelector("#trashPanel > summary span");
   if (trashSummary) trashSummary.textContent = t("trashLabel");
   if (clearTrashBtn) clearTrashBtn.textContent = t("clearTrash");
@@ -617,15 +626,19 @@ function render(options = {}) {
     allOrderedIds.push(...ids);
   });
   const items = allOrderedIds.map((id) => itemMap.get(id)).filter(Boolean);
+  const benchedSet = new Set(state.benchedIds || []);
+  const activeItems = items.filter((i) => !benchedSet.has(i.id));
+  const benchedItems = items.filter((i) => benchedSet.has(i.id));
 
   phasesRoot.innerHTML = "";
   const fragment = document.createDocumentFragment();
-  items.forEach((item, index) => {
+  activeItems.forEach((item, index) => {
     const card = createCard(item, item.category || UNGROUPED, index);
     fragment.appendChild(card);
   });
   phasesRoot.appendChild(fragment);
 
+  renderPool(benchedItems);
   renderTrash();
 
   if (suppressAnimation) {
@@ -633,6 +646,25 @@ function render(options = {}) {
       document.body.classList.remove("no-enter-anim");
     });
   }
+}
+
+function renderPool(items) {
+  if (!poolRoot) return;
+  poolRoot.innerHTML = "";
+  if (poolCount) poolCount.textContent = items.length ? `(${items.length})` : "";
+  if (items.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty-tip";
+    empty.textContent = lang === "zh" ? "暂无替补卡片" : "No benched cards";
+    poolRoot.appendChild(empty);
+    return;
+  }
+  const fragment = document.createDocumentFragment();
+  items.forEach((item, index) => {
+    const card = createCard(item, "pool", index);
+    fragment.appendChild(card);
+  });
+  poolRoot.appendChild(fragment);
 }
 
 function renderTrash() {
@@ -681,7 +713,7 @@ function createCard(item, zone, index) {
   const saveEditBtn = node.querySelector(".save-edit-btn");
   const cancelEditBtn = node.querySelector(".cancel-edit-btn");
 
-  const numPrefix = zone !== "trash" ? `${index + 1}. ` : "";
+  const numPrefix = (zone !== "trash" && zone !== "pool") ? `${index + 1}. ` : "";
   title.textContent = numPrefix + translateTitle(item);
   subtitle.textContent = translateCategory(item.category || UNGROUPED);
   preview.textContent = item.prompt;
@@ -698,25 +730,32 @@ function createCard(item, zone, index) {
   copyBtn.textContent = t("copyAll");
 
   // Drag
-  if (zone !== "trash") {
+  if (zone !== "trash" && zone !== "pool") {
     node.setAttribute("draggable", "true");
     node.classList.add("draggable");
     bindDragEvents(node, item.id, zone);
   }
 
-  // Phase move / restore button
-  if (zone !== "trash") {
-    phaseBtn.textContent = t("moveTo");
-    phaseBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      togglePhaseMenu(node, item.id);
-    });
-  } else {
+  // Right button: bench/unbench/restore
+  if (zone === "trash") {
     phaseBtn.textContent = t("restore");
     phaseBtn.classList.add("secondary");
     phaseBtn.classList.remove("phase-select-btn");
     phaseBtn.addEventListener("click", () => {
       restoreFromTrash(item.id);
+    });
+  } else if (zone === "pool") {
+    phaseBtn.textContent = t("benchIn");
+    phaseBtn.classList.add("secondary");
+    phaseBtn.classList.remove("phase-select-btn");
+    phaseBtn.addEventListener("click", () => {
+      unbenchCard(item.id);
+    });
+  } else {
+    phaseBtn.textContent = t("benchOut");
+    phaseBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      benchCard(item.id);
     });
   }
 
@@ -1034,6 +1073,18 @@ function updateCard(cardId, newTitle, newPrompt) {
   commitState();
 }
 
+function benchCard(cardId) {
+  if (!state.benchedIds) state.benchedIds = [];
+  if (!state.benchedIds.includes(cardId)) state.benchedIds.push(cardId);
+  commitState();
+}
+
+function unbenchCard(cardId) {
+  if (!state.benchedIds) return;
+  state.benchedIds = state.benchedIds.filter((id) => id !== cardId);
+  commitState();
+}
+
 function deleteCard(cardId) {
   const item = allItems.find((card) => card.id === cardId);
   if (!item) return;
@@ -1051,7 +1102,8 @@ function deleteCard(cardId) {
     if (!state.deletedCardIds.includes(cardId)) state.deletedCardIds.push(cardId);
   }
 
-  // Remove from phase order
+  // Remove from phase order and bench
+  if (state.benchedIds) state.benchedIds = state.benchedIds.filter((id) => id !== cardId);
   for (const phase of Object.keys(state.phaseOrder)) {
     state.phaseOrder[phase] = state.phaseOrder[phase].filter((id) => id !== cardId);
   }
@@ -1117,6 +1169,7 @@ function resetAllUsageCount() {
 function createDefaultState() {
   return {
     phaseOrder: {},
+    benchedIds: [],
     customCards: [],
     trashedCustomCards: [],
     usageCountById: {},
@@ -1129,6 +1182,9 @@ function normalizeState(raw) {
   const next = createDefaultState();
   if (!raw || typeof raw !== "object") return next;
 
+  if (Array.isArray(raw.benchedIds)) {
+    next.benchedIds = raw.benchedIds.filter((id) => typeof id === "string");
+  }
   if (raw.phaseOrder && typeof raw.phaseOrder === "object") {
     Object.keys(raw.phaseOrder).forEach((phase) => {
       if (Array.isArray(raw.phaseOrder[phase])) {

@@ -2,9 +2,7 @@
 
 > 由 Supervisor-Skills 的 `plugins/phd-research/skills/*/SKILL.md` 自动聚合。
 
-### 想法评估
-
-## Idea Evaluator
+## 评估想法
 
 ```markdown
 ---
@@ -275,9 +273,7 @@ Top three actions to take first:
 
 ```
 
-### 论文框架
-
-## Tech Paper Template
+## 梳理论文框架
 
 ```markdown
 ---
@@ -475,9 +471,7 @@ If any check fails, mark the skeleton as "needs user attention".
 
 ```
 
-### Introduction 写作
-
-## Introduction Drafter
+## 起草 Introduction
 
 ```markdown
 ---
@@ -733,9 +727,7 @@ and do not claim the outline is complete.
 
 ```
 
-### 图表设计
-
-## Figure Designer
+## 设计图表
 
 ```markdown
 ---
@@ -948,9 +940,7 @@ items they must confirm before submission.
 
 ```
 
-### 投稿审查
-
-## Pre-Submission Reviewer
+## 审查投稿
 
 ```markdown
 ---
@@ -1203,9 +1193,7 @@ of its scan and the user confirms completeness.
 
 ```
 
-### Benchmark 论文
-
-## Benchmark Paper Template
+## 规划 Benchmark 论文
 
 ```markdown
 ---
@@ -1353,9 +1341,7 @@ Load `references/checklist.md` and walk the four-category checklist. Report any 
 
 ```
 
-### AI 协作
-
-## Vibe Research Workflow
+## AI 辅助科研流程
 
 ```markdown
 ---

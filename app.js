@@ -715,7 +715,7 @@ function createCard(item, zone, index) {
 
   const numPrefix = (zone !== "trash" && zone !== "pool") ? `${index + 1}. ` : "";
   title.textContent = numPrefix + translateTitle(item);
-  subtitle.textContent = translateCategory(item.category || UNGROUPED);
+  subtitle.classList.add("hidden");
   preview.textContent = item.prompt;
   if (previewSummary) {
     const usage = document.createElement("span");

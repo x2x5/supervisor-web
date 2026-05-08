@@ -1195,7 +1195,7 @@ of its scan and the user confirms completeness.
 
 ## 规划 Benchmark 论文
 
-```markdown
+````markdown
 ---
 name: benchmark-paper-template
 description: Structures Benchmark and Evaluation papers using the five-pillar framework (Research Gap, Construction Pipeline, Evaluation Framework, Empirical Findings, optional Companion Method). Returns a completeness audit, a six-part Introduction logic chain, a Section 2-7 skeleton, and a pre-submission checklist. Use when writing a benchmark paper, structuring a benchmark paper, checking whether a benchmark idea is substantive, drafting a benchmark Introduction, or planning the data-construction pipeline or experiments.
@@ -1339,7 +1339,7 @@ Load `references/checklist.md` and walk the four-category checklist. Report any 
 - [`references/instantiation-template.md`](references/instantiation-template.md): fillable template for instantiating this thinking model on your paper.
 - [`references/orchestrator-notes.md`](references/orchestrator-notes.md): historical notes from the earlier staged orchestrator architecture, kept for context.
 
-```
+````
 
 ## AI 辅助科研流程
 

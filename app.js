@@ -867,7 +867,7 @@ function togglePhaseMenu(cardNode, cardId) {
     const btn = document.createElement("button");
     btn.className = "phase-option";
     btn.type = "button";
-    btn.textContent = phase;
+    btn.textContent = phase === UNGROUPED ? "默认" : phase;
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       moveCardToPhase(cardId, phase);

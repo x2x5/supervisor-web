@@ -238,11 +238,22 @@ function t(key, ...args) {
   return val || key;
 }
 
+const TITLE_EN = {
+  "评估想法": "Evaluate Idea",
+  "梳理论文框架": "Paper Skeleton",
+  "起草 Introduction": "Draft Introduction",
+  "设计图表": "Design Figure",
+  "审查投稿": "Review Submission",
+  "规划 Benchmark 论文": "Plan Benchmark Paper",
+  "AI 辅助科研流程": "Vibe Research Workflow",
+};
+
 function translateTitle(item) {
   if (lang === "zh") {
     if (item.titleZh) return item.titleZh;
     if (TITLE_ZH[item.title]) return TITLE_ZH[item.title];
   }
+  if (lang === "en" && TITLE_EN[item.title]) return TITLE_EN[item.title];
   return item.title;
 }
 
